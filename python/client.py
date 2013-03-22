@@ -1,7 +1,11 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*- 
+
 import websocket
 import thread
 import time
 import json
+import argparse
 
 def on_message(ws, message):
     print '< %s' % json.loads(message)
@@ -13,14 +17,17 @@ def on_close(ws):
     print "### closed ###"
 
 def on_open(ws):
-    ws.send('{"name":"subscribe","data": "*::de::**"}');
+    ws.send('{"name":"subscribe","data": "%s"}' % ws.subscribe);
+    time.sleep(2)
     def run(*args):
 #         ws.send('{"name":"subscribe","data":"**"}');
 #         ws.send('{"name":"subscribe","data":"**"}');
 
-        for i in range(10):
-            ws.send('{ "data": "Hello %d", "name": "prueba::de::concepto"}' % i)
-#         time.sleep(1)
+        ws.send(json.dumps({"data": {u"nada":u"que decir"}, "name": "message"}));
+        time.sleep(3)
+        for i in range(3):
+            ws.send('{ "data": "Hello %d", "name": "%s"}' % (i,ws.send_type))
+            time.sleep(1)
 #         ws.send('{"name":"a::b::d","data":"nada"}');
 #         time.sleep(2)
 #         ws.send('{"name":"a::b::c::e","data":"nada"}');
@@ -28,7 +35,6 @@ def on_open(ws):
 #         ws.send('{"name":"a::b::c::d::f::e","data":"nada"}');
 #         ws.send('{"name":"a::b::*::d::f::e","data":"nada"}');
 #         ws.send('{"name":"message","data":"nada"}');
-        ws.send('{ "data": "Hello>", "name": "**::vamos"}')
 #         for i in range(3):
         time.sleep(2)
         ws.close()
@@ -37,11 +43,22 @@ def on_open(ws):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Test websocket client.')
+
+    parser.add_argument('--subscribe','-s', nargs='?',
+            default='**', type=str, help='Subscription')
+    parser.add_argument('--send_type','-t', nargs='?',
+            default='prueba::*::concepto::**::punto', type=str, help='Type of event to send')
+    parser.add_argument('SERVER', nargs='?', metavar='SERVER',
+            default='127.0.0.1:1337', type=str, help='Endpoint')
+    args = parser.parse_args()
     websocket.enableTrace(False)
-    ws = websocket.WebSocketApp("ws://127.0.0.1:1337/",
+    ws = websocket.WebSocketApp("ws://"+args.SERVER,
                                 on_message = on_message,
                                 on_error = on_error,
                                 on_close = on_close)
+    ws.send_type = args.send_type
+    ws.subscribe = args.subscribe
     ws.on_open = on_open
 
     ws.run_forever()

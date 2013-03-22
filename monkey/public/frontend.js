@@ -24,7 +24,7 @@ $(function () {
     }
  
     // open connection
-    var connection = new WebSocket('ws://127.0.0.1:1337');
+    var connection = new WebSocket('ws://'+location.host);
  
     connection.onopen = function () {
         // first we want users to enter their names
@@ -116,7 +116,7 @@ $(function () {
         content.append('<p><span style="color:' + color + '">'+author+' ['+type+']' + '</span> @ ' +
              + (dt.getHours() < 10 ? '0' + dt.getHours() : dt.getHours()) + ':'
              + (dt.getMinutes() < 10 ? '0' + dt.getMinutes() : dt.getMinutes())
-             + ': ' + message + '</p>');
+             + ': ' + JSON.stringify(message) + '</p>');
     }
 });
 

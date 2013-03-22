@@ -186,6 +186,9 @@ function recursiveSearch(tokens, tree, parentN){
         for(var value in tree){
             if(value !== '_subscribers'){
                 results=results.concat(recursiveSearch(nextTokens,tree[value],value));
+                if( value === '**'){
+                    results=results.concat(recursiveSearch(nextTokens,tree,''));
+                }
                 if(isDouble){
                     results=results.concat(recursiveSearch(nextTokens,tree,''));
                 }
@@ -271,7 +274,7 @@ wsServer.on('request', function(request) {
                     var obj = {
                         name: msg.name,
                         time: (new Date()).getTime(),
-                        data: htmlEntities(msg.data),
+                        data: msg.data,
                         sender: connection.name,
                     };
 
@@ -290,8 +293,8 @@ wsServer.on('request', function(request) {
         console.log((new Date()) + ' Peer '
             + connection.remoteAddress + ' (' + connection.name + ')' + ' disconnected.');
         // remove user from the list of connected clients
-        console.log('Subscriptions:');
-        console.log(subscriptions);
+//         console.log('Subscriptions:');
+//         console.log(subscriptions);
         removeAllSubscriptions(clients[index]);
         console.log('Removed subscriptions');
         console.log('Subscriptions:');

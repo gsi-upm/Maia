@@ -93,8 +93,7 @@
     },
     "websocket": {
       "version": "1.0.8",
-      "from": "websocket@",
-      "resolved": "https://registry.npmjs.org/websocket/-/websocket-1.0.8.tgz"
+      "from": "websocket@"
     }
   }
 }

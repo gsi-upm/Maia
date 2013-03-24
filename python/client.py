@@ -1,5 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*- 
+'''
+Simple python websocket client, adapted for Maia
+@author balkian (J. Fernando Sánchez)
+
+Grupo de Sistemas Inteligentes (GSI-UPM)
+  * http://gsi.dit.upm.es
+  * http://github.com/gsi-upm
+'''
 
 import websocket
 import thread
@@ -20,22 +28,10 @@ def on_open(ws):
     ws.send('{"name":"subscribe","data": "%s"}' % ws.subscribe);
     time.sleep(2)
     def run(*args):
-#         ws.send('{"name":"subscribe","data":"**"}');
-#         ws.send('{"name":"subscribe","data":"**"}');
-
-        ws.send(json.dumps({"data": {u"nada":u"que decir"}, "name": "message"}));
         time.sleep(3)
         for i in range(3):
             ws.send('{ "data": "Hello %d", "name": "%s"}' % (i,ws.send_type))
             time.sleep(1)
-#         ws.send('{"name":"a::b::d","data":"nada"}');
-#         time.sleep(2)
-#         ws.send('{"name":"a::b::c::e","data":"nada"}');
-#         ws.send('{"name":"a::b::d::e","data":"nada"}');
-#         ws.send('{"name":"a::b::c::d::f::e","data":"nada"}');
-#         ws.send('{"name":"a::b::*::d::f::e","data":"nada"}');
-#         ws.send('{"name":"message","data":"nada"}');
-#         for i in range(3):
         time.sleep(2)
         ws.close()
         print "thread terminating..."

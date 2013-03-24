@@ -1,72 +1,49 @@
-// Code extracted from:
+// Maia Server Implementation
+//
+// @author balkian
+// Grupo de Sistemas Inteligentes
+// http://gsi.dit.upm.es
+// http://github.com/gsi-upm
+// 
+// Code based on:
 // http://martinsikora.com/nodejs-and-websocket-simple-chat-tutorial 
-
 // http://ejohn.org/blog/ecmascript-5-strict-mode-json-and-more/
-"use strict";
- 
-// Optional. You will see this name in eg. 'ps' or 'top' command
-process.title = 'maia-server';
- 
-// Port where we'll run the websocket server
-var webSocketsServerPort = 1337;
- 
-// websocket and http servers
+
 var webSocketServer = require('websocket').server;
 var http = require('http');
-var express = require('express');
-var app = express();
- 
-app.use(express.static('public'));
 
-/**
- * Global variables
- */
-// list of currently connected clients (users)
-var clients = [ ];
-// list of subscriptions
-var subscriptions = {};
-
-
-function MaiaServer(){
-    /**
-     * HTTP server
-     */
-    var server = http.createServer(app);
-    server.listen(webSocketsServerPort, function() {
+function MaiaServer(webSocketsServerPort, app){
+    var that = this;
+    that.separator = "::";
+    that.subscriptions = {};
+    that.clients = [];
+    that.server = http.createServer(app);
+    that.server.listen(webSocketsServerPort, function() {
         console.log((new Date()) + " Server is listening on port " + webSocketsServerPort);
     });
 
     /**
      * WebSocket server
      */
-    webSocketServer.call(this, {
+    webSocketServer.call(that, {
         // WebSocket server is tied to a HTTP server. WebSocket request is just
         // an enhanced HTTP request. For more info http://tools.ietf.org/html/rfc6455#page-6
-        httpServer: server
+        httpServer: that.server
     });
-
-    var that = this;
-    
-    this.separator = "::";
-    this.subscriptions = {};
-    
     that.on('request', function(request) {
         console.log((new Date()) + ' Connection from origin ' + request.origin + '.');
-     
         // accept connection - you should check 'request.origin' to make sure that
         // client is connecting from your website
         // (http://en.wikipedia.org/wiki/Same_origin_policy)
         var connection = request.accept(null, request.origin); 
         // we need to know client index to remove them on 'close' event
-        var index = clients.push(connection) - 1;
-
+        var index = that.clients.push(connection) - 1;
         console.log((new Date()) + ' Connection accepted.');
         console.log('Connection: ' + connection);
         connection.on('message', function(message) {
                 try{
                     console.log((new Date()) + ' Received Message from '
                                 + connection.name + ': ' + message.utf8Data);
-                    
                     var msg = JSON.parse(message.utf8Data);
                     if(msg.name === 'username'){
                         connection.name = msg.data;
@@ -75,7 +52,7 @@ function MaiaServer(){
                         var name = msg.data;
                         var tokens = name.split(this.separator)
                         console.log('Subscribing: ' + tokens);
-                        that.addSubscriber(tokens,clients[index]);
+                        that.addSubscriber(tokens,that.clients[index]);
                         console.log('Subscriptions: ');
                         console.log(that.subscriptions);
                     }else {
@@ -85,7 +62,6 @@ function MaiaServer(){
                             data: msg.data,
                             sender: connection.name,
                         };
-
                         // broadcast message to all connected clients
                         var json = JSON.stringify(obj);
                         that.sendToSubscribed(obj);
@@ -93,18 +69,15 @@ function MaiaServer(){
                 }catch(err){
                     console.log(err);
                 }
-            
         });
-     
         // user disconnected
         connection.on('close', function(conn) {
             console.log((new Date()) + ' Peer '
                 + connection.remoteAddress + ' (' + connection.name + ')' + ' disconnected.');
-            that.removeAllSubscriptions(clients[index]);
+            that.removeAllSubscriptions(that.clients[index]);
             console.log('Removed subscriptions. Now: ', that.subscriptions);
-            clients.splice(index, 1);
+            that.clients.splice(index, 1);
         });
-     
     });
 }
 
@@ -318,4 +291,4 @@ MaiaServer.prototype.sendToSubscribed = function(event){
     }
 }
 
-var wsServer = new MaiaServer();
+exports.MaiaServer = MaiaServer;

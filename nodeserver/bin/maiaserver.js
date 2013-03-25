@@ -14,10 +14,6 @@
 process.title = 'maia-server';
  
 var MaiaServer = require('../lib/maiaserver.js').MaiaServer;
-var express = require('express');
-var path = require('path');
 // Port where we'll run the websocket server
 var port = 1337;
-var app = express();
-app.use(express.static(path.resolve(__dirname, '../public')));
-var wsServer = new MaiaServer(port,app);
+var wsServer = new MaiaServer(port, true);

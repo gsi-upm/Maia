@@ -10,34 +10,80 @@
 // http://ejohn.org/blog/ecmascript-5-strict-mode-json-and-more/
 
 var webSocketServer = require('websocket').server;
+var express = require('express');
 var http = require('http');
+var path = require('path');
 
-function MaiaServer(webSocketsServerPort, app){
-    var that = this;
-    that.separator = "::";
-    that.subscriptions = {};
-    that.clients = [];
-    that.server = http.createServer(app);
-    that.server.listen(webSocketsServerPort, function() {
+function MaiaServer(webSocketsServerPort, servestatic, app){
+    var self = this;
+    if (!app || typeof app === 'undefined' || typeof app === 'null'){
+        self.app = express();
+    }else{
+        self.app = app;
+    }
+    self.separator = "::";
+    self.subscriptions = {};
+    self.clients = [];
+    if(servestatic){
+        self.staticpath = path.resolve(__dirname, '../public');
+        self.app.use(express.static(self.staticpath));
+    }
+    self.app.use(express.bodyParser());
+    self.server = http.createServer(self.app);
+    self.server.listen(webSocketsServerPort, function() {
         console.log((new Date()) + " Server is listening on port " + webSocketsServerPort);
     });
+
+    var hookHandler = {
+        name : 'Hooks Dispatcher',
+        sendUTF:  function(message){
+            var msg = JSON.parse(message);
+            console.log('Received Hook:',msg.name);
+        }
+    }
+    self.addSubscriber(['hook','**'],hookHandler);
 
     /**
      * WebSocket server
      */
-    webSocketServer.call(that, {
+    webSocketServer.call(self, {
         // WebSocket server is tied to a HTTP server. WebSocket request is just
         // an enhanced HTTP request. For more info http://tools.ietf.org/html/rfc6455#page-6
-        httpServer: that.server
+        httpServer: self.server
     });
-    that.on('request', function(request) {
+    
+
+    /*
+     * Catch hooks and transform them to events
+     */
+    self.app.post(/^\/hook(\/?.*)/, function(req, res){
+        var htype = '';
+        if(req.params[0].length>1){
+            htype = req.params[0].replace(/\//g,self.separator)
+        }
+        var outevent = {
+            name: 'hook'+htype,
+            origin: 'Hooks Dispatcher',
+            data: {
+                origin: req.connection.remoteAddress,
+                body: req.body,
+                header: req.header,
+            }
+        };
+        console.log('Received:',outevent.name);
+        self.sendToSubscribed(outevent);
+        res.end();
+    });
+
+    // Handle socket connections
+    self.on('request', function(request) {
         console.log((new Date()) + ' Connection from origin ' + request.origin + '.');
         // accept connection - you should check 'request.origin' to make sure that
         // client is connecting from your website
         // (http://en.wikipedia.org/wiki/Same_origin_policy)
         var connection = request.accept(null, request.origin); 
         // we need to know client index to remove them on 'close' event
-        var index = that.clients.push(connection) - 1;
+        var index = self.clients.push(connection) - 1;
         console.log((new Date()) + ' Connection accepted.');
         console.log('Connection: ' + connection);
         connection.on('message', function(message) {
@@ -52,19 +98,17 @@ function MaiaServer(webSocketsServerPort, app){
                         var name = msg.data;
                         var tokens = name.split(this.separator)
                         console.log('Subscribing: ' + tokens);
-                        that.addSubscriber(tokens,that.clients[index]);
+                        self.addSubscriber(tokens,self.clients[index]);
                         console.log('Subscriptions: ');
-                        console.log(that.subscriptions);
+                        console.log(self.subscriptions);
                     }else {
                         var obj = {
                             name: msg.name,
-                            time: (new Date()).getTime(),
                             data: msg.data,
-                            sender: connection.name,
+                            origin: connection.name,
                         };
                         // broadcast message to all connected clients
-                        var json = JSON.stringify(obj);
-                        that.sendToSubscribed(obj);
+                        self.sendToSubscribed(obj);
                     }
                 }catch(err){
                     console.log(err);
@@ -74,9 +118,9 @@ function MaiaServer(webSocketsServerPort, app){
         connection.on('close', function(conn) {
             console.log((new Date()) + ' Peer '
                 + connection.remoteAddress + ' (' + connection.name + ')' + ' disconnected.');
-            that.removeAllSubscriptions(that.clients[index]);
-            console.log('Removed subscriptions. Now: ', that.subscriptions);
-            that.clients.splice(index, 1);
+            self.removeAllSubscriptions(self.clients[index]);
+            console.log('Removed subscriptions. Now: ', self.subscriptions);
+            self.clients.splice(index, 1);
         });
     });
 }
@@ -94,8 +138,7 @@ MaiaServer.prototype.htmlEntities = function(str) {
 /**
  * Helper function to add a subscriber to the list.
  */
-MaiaServer.prototype.addSubscriber = function(path,connection){
-        
+MaiaServer.prototype.addSubscriber = function(path,connection){ 
     var leaf = this.subscriptions;
     for(var token in path){
         var key = path[token];
@@ -109,12 +152,13 @@ MaiaServer.prototype.addSubscriber = function(path,connection){
     } else {
         leaf._subscribers.push(connection);
     }
+    console.log('Subscriptions: ', this.subscriptions);
 }
 
 /**
  * Remove all the subscriptions for a certain connection.
  *
- */
+ */ 
 MaiaServer.prototype.removeAllSubscriptions = function(connection){
     var finished = false;
     var stack = [];
@@ -210,8 +254,8 @@ MaiaServer.prototype.recursiveSearch = function(tokens, tree, parentN){
     if(tokens.length < 1){
         if(Array(tree).length == 0 || (Array(tree).length == 1 && tree['_subscribers'])){
             return [parentN];
-        }else{
-            return [];
+        }else if(tree['**']){
+            results=results.concat(this.recursiveSearch(tokens,tree['**'],'**'));
         }
     }
     else if(key !== '*' && key !== '**'){
@@ -267,7 +311,7 @@ MaiaServer.prototype.subscribe = function(name,connection){
 }
 
 /**
- * Notify all the 
+ * Notify all the subscribers
  *
  */
 
@@ -283,6 +327,7 @@ MaiaServer.prototype.pokeSubscribers = function(string,event){
 }
 
 MaiaServer.prototype.sendToSubscribed = function(event){
+    event.time = (new Date()).getTime();
     var tokens = event.name.split(this.separator);
     var results = this.recursiveSearch(tokens,this.subscriptions,'')
     console.log('Found subscribers: ',results);

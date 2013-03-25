@@ -6,8 +6,6 @@ $(function () {
     var input = $('#input');
     var status = $('#status');
  
-    // my color assigned by the server
-    var myColor = false;
     // my name sent to the server
     var myName = false;
  
@@ -60,7 +58,7 @@ $(function () {
         // check the server source code above
         } else { // it's a single message
             input.removeAttr('disabled'); // let the user write another message
-            addMessage(json.sender, json.name, json.data,
+            addMessage(json.origin, json.name, json.data,
                        new Date(json.time));
         }
     };

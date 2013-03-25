@@ -13,6 +13,7 @@ var webSocketServer = require('websocket').server;
 var express = require('express');
 var http = require('http');
 var path = require('path');
+var logger = require('./logger').logger;
 
 function MaiaServer(webSocketsServerPort, servestatic, app){
     var self = this;
@@ -23,6 +24,7 @@ function MaiaServer(webSocketsServerPort, servestatic, app){
     }
     self.separator = "::";
     self.subscriptions = {};
+    self.plugins = [];
     self.clients = [];
     if(servestatic){
         self.staticpath = path.resolve(__dirname, '../public');
@@ -31,14 +33,14 @@ function MaiaServer(webSocketsServerPort, servestatic, app){
     self.app.use(express.bodyParser());
     self.server = http.createServer(self.app);
     self.server.listen(webSocketsServerPort, function() {
-        console.log((new Date()) + " Server is listening on port " + webSocketsServerPort);
+        logger.info((new Date()) + " Server is listening on port " + webSocketsServerPort);
     });
 
     var hookHandler = {
         name : 'Hooks Dispatcher',
         sendUTF:  function(message){
             var msg = JSON.parse(message);
-            console.log('Received Hook:',msg.name);
+            logger.info('Received Hook:',msg.name);
         }
     }
     self.addSubscriber(['hook','**'],hookHandler);
@@ -56,13 +58,13 @@ function MaiaServer(webSocketsServerPort, servestatic, app){
     /*
      * Catch hooks and transform them to events
      */
-    self.app.post(/^\/hook(\/?.*)/, function(req, res){
-        var htype = '';
+    self.app.post(/^\/(hook\/?.*)/, function(req, res){
+        var htype = [];
         if(req.params[0].length>1){
-            htype = req.params[0].replace(/\//g,self.separator)
+            htype = req.params[0].split('/');
         }
         var outevent = {
-            name: 'hook'+htype,
+            name: htype,
             origin: 'Hooks Dispatcher',
             data: {
                 origin: req.connection.remoteAddress,
@@ -70,62 +72,71 @@ function MaiaServer(webSocketsServerPort, servestatic, app){
                 header: req.header,
             }
         };
-        console.log('Received:',outevent.name);
-        self.sendToSubscribed(outevent);
+        logger.info('Received:',outevent.name);
+        self.send(outevent);
         res.end();
     });
 
     // Handle socket connections
     self.on('request', function(request) {
-        console.log((new Date()) + ' Connection from origin ' + request.origin + '.');
+        logger.info((new Date()) + ' Connection from origin ' + request.origin + '.');
         // accept connection - you should check 'request.origin' to make sure that
         // client is connecting from your website
         // (http://en.wikipedia.org/wiki/Same_origin_policy)
         var connection = request.accept(null, request.origin); 
         // we need to know client index to remove them on 'close' event
         var index = self.clients.push(connection) - 1;
-        console.log((new Date()) + ' Connection accepted.');
-        console.log('Connection: ' + connection);
+        logger.info((new Date()) + ' Connection accepted.');
+        logger.info('Connection: ' + connection);
         connection.on('message', function(message) {
                 try{
-                    console.log((new Date()) + ' Received Message from '
+                    logger.info((new Date()) + ' Received Message from '
                                 + connection.name + ': ' + message.utf8Data);
                     var msg = JSON.parse(message.utf8Data);
-                    if(msg.name === 'username'){
+                    msg.name = msg.name.split(this.separator);
+                    if(msg.name[0] === 'username'){
                         connection.name = msg.data;
                         connection.sendUTF('{"name":"accepted","data":"'+connection.name+'"}')
-                    }else if (msg.name === 'subscribe'){
+                    }else if (msg.name[0] === 'subscribe'){
                         var name = msg.data;
-                        var tokens = name.split(this.separator)
-                        console.log('Subscribing: ' + tokens);
-                        self.addSubscriber(tokens,self.clients[index]);
-                        console.log('Subscriptions: ');
-                        console.log(self.subscriptions);
+                        self.subscribe(name,self.clients[index]);
+                        logger.info(self.subscriptions);
                     }else {
                         var obj = {
                             name: msg.name,
                             data: msg.data,
                             origin: connection.name,
                         };
-                        // broadcast message to all connected clients
-                        self.sendToSubscribed(obj);
+                        self.send(obj);
                     }
                 }catch(err){
-                    console.log(err);
+                    logger.error(err);
+                    throw err;
                 }
         });
         // user disconnected
         connection.on('close', function(conn) {
-            console.log((new Date()) + ' Peer '
+            logger.info((new Date()) + ' Peer '
                 + connection.remoteAddress + ' (' + connection.name + ')' + ' disconnected.');
             self.removeAllSubscriptions(self.clients[index]);
-            console.log('Removed subscriptions. Now: ', self.subscriptions);
+            logger.debug('Removed subscriptions. Now: ', self.subscriptions);
             self.clients.splice(index, 1);
         });
     });
 }
 
 MaiaServer.prototype = Object.create(webSocketServer.prototype);
+
+MaiaServer.prototype.send = function(obj){
+        var res = Array(obj);
+        for(plugin in this.plugins){
+            res = this.plugins[plugin].process(res);
+        }
+        // broadcast message to all connected clients
+        for(i in res){
+            this.sendToSubscribed(res[i]);
+        }
+}
 
 /**
  * Helper function for escaping input strings.
@@ -152,7 +163,7 @@ MaiaServer.prototype.addSubscriber = function(path,connection){
     } else {
         leaf._subscribers.push(connection);
     }
-    console.log('Subscriptions: ', this.subscriptions);
+    logger.debug('Subscriptions: ', this.subscriptions);
 }
 
 /**
@@ -244,60 +255,77 @@ MaiaServer.prototype.getSubscriptions = function(path){
  * Search for subscriptions that match a certain pattern/namespace.
  *
  */
-MaiaServer.prototype.recursiveSearch = function(tokens, tree, parentN){
-    var results = [];
+MaiaServer.prototype.recursiveSearch = function(tokens, tree, parentK, parentT){
+    var matches = [];
     var key = tokens[0];
-    var nextTokens = tokens.slice(1);
     if(tree === undefined){
+        logger.error('Tree undefined');
         return [];
     }
-    if(tokens.length < 1){
+    if(!key){
         if(Array(tree).length == 0 || (Array(tree).length == 1 && tree['_subscribers'])){
-            return [parentN];
-        }else if(tree['**']){
-            results=results.concat(this.recursiveSearch(tokens,tree['**'],'**'));
+            return Array([parentT]);
+        }else{
+            return [];
         }
     }
-    else if(key !== '*' && key !== '**'){
-        if(tree[key]){
-            results=results.concat(this.recursiveSearch(nextTokens,tree[key],key));
+    if( key == '*'){
+        for(var tkey in tree){
+            if(tkey !== '_subscribers'){
+                matches.push([tkey,1]);   
+            }
         }
-        if(tree['*']){
-            results=results.concat(this.recursiveSearch(nextTokens,tree['*'],'*'));
-        }else if(tree['**']){
-            results=results.concat(this.recursiveSearch(nextTokens,tree,''));
-            results=results.concat(this.recursiveSearch(nextTokens,tree['**'],'**'));
-            results=results.concat(this.recursiveSearch(tokens,tree['**'],'**'));
+    }else if( key == '**'){
+        for(var tkey in tree){
+            if(tkey !== '_subscribers'){
+                matches.push([tkey,1]);   
+                matches.push([tkey,0]);   
+            }
         }
+        matches.push([null,1]);
+    }else if( tree[key] ){
+        matches.push([key,1]);
+    }else if(tree['*']){
+        matches.push(['*',1]);
     }
-    else{
-        var isDouble = (key == '**');
-        for(var value in tree){
-            if(value !== '_subscribers'){
-                results=results.concat(this.recursiveSearch(nextTokens,tree[value],value));
-                if( value === '**'){
-                    results=results.concat(this.recursiveSearch(nextTokens,tree,''));
+    if(tree['**']){
+        matches.push(['**',1]);
+    }
+    if(parentT === '**'){
+        matches.push([null,1]);
+    }
+    var results = [];
+    var set = {};
+    for(var match in matches){
+        var moveTokens = matches[match][1];
+        var moveTree = matches[match][0] != null;
+        var nextT = parentT;
+        var nextK = parentK;
+        var nextTokens = tokens;
+        var nextTree = tree;
+        if(moveTokens){
+            nextK = tokens[0];
+            nextTokens = tokens.slice(1);
+        }
+        if(moveTree){
+            nextT = matches[match][0];
+            nextTree = tree[nextT];
+        }
+        tempResults = this.recursiveSearch(nextTokens, nextTree, nextK, nextT);
+        if(tempResults.length > 0){
+            set[nextT]=true;
+            for(var ix in tempResults){
+                if(parentT && moveTree){
+                    tempResults[ix].unshift(parentT);
                 }
-                if(isDouble){
-                    results=results.concat(this.recursiveSearch(nextTokens,tree,''));
+                if(!set[JSON.stringify(tempResults[ix])]){
+                    results.push(tempResults[ix])
+                    set[JSON.stringify(tempResults[ix])] = true;
                 }
             }
         }
     }
-    var realResults = [];
-    var set = {}
-    for(var result in results){
-        if(results[result].length > 0 && !set[results[result]]){
-            if(parentN !== ""){
-                realResults.push(parentN+this.separator+results[result]);
-            }
-            else{
-                realResults.push(results[result]);
-            }
-            set[results[result]] = true;
-        }
-    }
-    return realResults;
+    return results;
 }
 
 /**
@@ -311,29 +339,38 @@ MaiaServer.prototype.subscribe = function(name,connection){
 }
 
 /**
- * Notify all the subscribers
+ * Notify all the subscribers of a specific
  *
  */
 
-MaiaServer.prototype.pokeSubscribers = function(string,event){
-    var subs = this.getSubscriptions(string.split(this.separator));
-    event['ForSubscription'] = string;
+MaiaServer.prototype.pokeSubscribers = function(tokens ,event){
+    var subs = this.getSubscriptions(tokens);
+    event['ForSubscription'] = tokens.join(this.separator);
+    event.name = event.name.join(this.separator);
     for(var subscriber in subs){
-//         console.log(this.subscriptions);
-        console.log('Poking subscriber: '+subs[subscriber].name);
+        logger.debug('Poking subscriber: '+subs[subscriber].name);
         subs[subscriber].sendUTF(JSON.stringify(event));
     }
     delete event['ForSubscription'];
 }
 
+/**
+ * Send a notification to all the possible subscribers
+ *
+ */
 MaiaServer.prototype.sendToSubscribed = function(event){
     event.time = (new Date()).getTime();
-    var tokens = event.name.split(this.separator);
-    var results = this.recursiveSearch(tokens,this.subscriptions,'')
-    console.log('Found subscribers: ',results);
+    var results = this.recursiveSearch(event.name,this.subscriptions)
+    logger.debug('Found subscriptions: ',results);
     for(var result in results){
         this.pokeSubscribers(results[result],event);
     }
 }
+
+MaiaServer.prototype.addPlugin = function(plug){
+    plug.server = this;
+    var subs = plug.getSubscriptions();
+    this.plugins.push(plug);
+};
 
 exports.MaiaServer = MaiaServer;

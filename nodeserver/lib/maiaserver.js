@@ -40,7 +40,7 @@ function MaiaServer(webSocketsServerPort, servestatic, app){
         name : 'Hooks Dispatcher',
         sendUTF:  function(message){
             var msg = JSON.parse(message);
-            logger.info('Received Hook:',msg.name);
+            logger.debug('Received Hook:',msg.name);
         }
     }
     self.addSubscriber(['hook','**'],hookHandler);
@@ -128,14 +128,30 @@ function MaiaServer(webSocketsServerPort, servestatic, app){
 MaiaServer.prototype = Object.create(webSocketServer.prototype);
 
 MaiaServer.prototype.send = function(obj){
-        var res = Array(obj);
-        for(plugin in this.plugins){
-            res = this.plugins[plugin].process(res);
+    var res = Array(obj);
+    for(plugin in this.plugins){
+        res = this.plugins[plugin].process(res);
+    }
+    // broadcast message to all connected clients
+    for(i in res){
+        logger.debug('Sending:',res[i].name);
+        this.sendToSubscribed(res[i]);
+    }
+}
+
+/**
+ * Helper function to stringify an event
+ */
+MaiaServer.prototype.stringify = function(msg) {
+    var firstTime = true;
+    return JSON.stringify(msg, function(key,value){
+        if( firstTime && key == 'name'){
+            firstTime = false;
+            return value.join(this.separator);
+        }else{
+            return value;
         }
-        // broadcast message to all connected clients
-        for(i in res){
-            this.sendToSubscribed(res[i]);
-        }
+    });
 }
 
 /**
@@ -346,10 +362,9 @@ MaiaServer.prototype.subscribe = function(name,connection){
 MaiaServer.prototype.pokeSubscribers = function(tokens ,event){
     var subs = this.getSubscriptions(tokens);
     event['ForSubscription'] = tokens.join(this.separator);
-    event.name = event.name.join(this.separator);
     for(var subscriber in subs){
         logger.debug('Poking subscriber: '+subs[subscriber].name);
-        subs[subscriber].sendUTF(JSON.stringify(event));
+        subs[subscriber].sendUTF(this.stringify(event));
     }
     delete event['ForSubscription'];
 }
@@ -362,6 +377,7 @@ MaiaServer.prototype.sendToSubscribed = function(event){
     event.time = (new Date()).getTime();
     var results = this.recursiveSearch(event.name,this.subscriptions)
     logger.debug('Found subscriptions: ',results);
+    logger.debug('For event: ',event.name);
     for(var result in results){
         this.pokeSubscribers(results[result],event);
     }

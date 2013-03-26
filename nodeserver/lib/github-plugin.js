@@ -6,9 +6,9 @@ GithubPlugin.prototype.processOne = function(msg){
     if(path[0] === 'hook' && path[1] === 'github'){
         var payload = msg.data.body.payload;
         payload = JSON.parse(payload);
-        msg.name = ['github'];
-        console.log('PAYLOAD(type):',typeof payload);
-        console.log('PAYLOAD:',payload);
+        var owner = payload.repository.owner.name;
+        var repository = payload.repository.name
+        msg.name = ['hook', 'github',owner,repository];
         msg.data.body = payload;
     }
     return msg;

@@ -14,37 +14,37 @@ import thread
 import time
 import json
 import argparse
+import os
 
 def on_message(ws, message):
-    print '< %s' % json.loads(message)
+    print 'Received a commit!!'
+    try:
+        os.system('git pull origin master')
+    except Exception as ex:
+        print ex
 
 def on_error(ws, error):
+    ws.attempts+=1
+    print 'Failed attempts #%s' % ws.attempts
     print error
 
 def on_close(ws):
     print "### closed ###"
 
 def on_open(ws):
-    ws.send('{"name":"subscribe","data": "%s"}' % ws.subscribe);
+    ws.attempts=0
+    print 'Open'
+    ws.send('{"name":"subscribe","data": "hook::github::%s::%s"}' % (ws.user,ws.repository));
     time.sleep(2)
-    def run(*args):
-        time.sleep(3)
-        for i in range(3):
-            ws.send('{ "data": "Hello %d", "name": "%s"}' % (i,ws.send_type))
-            time.sleep(1)
-        time.sleep(2)
-        ws.close()
-        print "thread terminating..."
-    thread.start_new_thread(run, ())
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Test websocket client.')
 
+
+    parser.add_argument('--user','-u', nargs='?',
+            default='gsi-upm', type=str, help='Subscription')
     parser.add_argument('--repository','-r', nargs='?',
-            default='', type=str, help='Subscription')
-    parser.add_argument('--send_type','-t', nargs='?',
-            default='prueba::*::concepto::**::punto', type=str, help='Type of event to send')
+            default='Maia', type=str, help='Subscription')
     parser.add_argument('SERVER', nargs='?', metavar='SERVER',
             default='127.0.0.1:1337', type=str, help='Endpoint')
     args = parser.parse_args()
@@ -53,10 +53,14 @@ if __name__ == "__main__":
                                 on_message = on_message,
                                 on_error = on_error,
                                 on_close = on_close)
-    ws.send_type = args.send_type
-    ws.subscribe = args.subscribe
+    ws.repository = args.repository
+    ws.user = args.user
     ws.on_open = on_open
+    ws.attempts = 0
+    while(ws.attempts<5):
+        ws.run_forever()
+        time.sleep(5)
+    print('Giving up :(')
 
-    ws.run_forever()
 
 

@@ -1,0 +1,5 @@
+.*
+*.swp
+python/venv
+*.o
+node_modules

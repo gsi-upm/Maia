@@ -25,12 +25,14 @@ def on_close(ws):
     print "### closed ###"
 
 def on_open(ws):
+    ws.send('{"name":"username","data": "%s"}' % "python_client");
+    time.sleep(1);
     ws.send('{"name":"subscribe","data": "%s"}' % ws.subscribe);
     time.sleep(2)
     def run(*args):
         time.sleep(3)
         for i in range(3):
-            ws.send('{ "data": "Hello %d", "name": "%s"}' % (i,ws.send_type))
+            ws.send('{ "data": %s, "name": "%s"}' % (ws.send_data,ws.send_type))
             time.sleep(1)
         time.sleep(2)
         ws.close()
@@ -45,6 +47,8 @@ if __name__ == "__main__":
             default='**', type=str, help='Subscription')
     parser.add_argument('--send_type','-t', nargs='?',
             default='prueba::*::concepto::**::punto', type=str, help='Type of event to send')
+    parser.add_argument('--send_data','-d', nargs='?',
+            default='"Hello!"', type=str, help='Data to send')
     parser.add_argument('SERVER', nargs='?', metavar='SERVER',
             default='127.0.0.1:1337', type=str, help='Endpoint')
     args = parser.parse_args()
@@ -54,6 +58,7 @@ if __name__ == "__main__":
                                 on_error = on_error,
                                 on_close = on_close)
     ws.send_type = args.send_type
+    ws.send_data = args.send_data
     ws.subscribe = args.subscribe
     ws.on_open = on_open
 

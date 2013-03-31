@@ -19,7 +19,7 @@ var TestPlugin = require('../lib/maia-server').MaiaPlugin;
 // Port where we'll run the websocket server
 var port = 1337;
 var ghp = new GithubPlugin(['all']);
-var tp = new TestPlugin(['all']);
+var tp = new TestPlugin('testplugin',['all']);
 var maiaServer = new MaiaServer(port, true, null);
 maiaServer.addPlugin(ghp);
 maiaServer.addPlugin(tp);

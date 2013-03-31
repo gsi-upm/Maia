@@ -3,3 +3,4 @@
 python/venv
 *.o
 node_modules
+*.log

@@ -13,10 +13,13 @@
 // Optional. You will see this name in eg. 'ps' or 'top' command
 process.title = 'maia-server';
  
-var MaiaServer = require('../lib/maiaserver.js').MaiaServer;
-var GithubPlugin = require('../lib/github-plugin.js').GithubPlugin;
+var MaiaServer = require('../lib/maia-server').MaiaServer;
+var GithubPlugin = require('../lib/github-plugin').GithubPlugin;
+var TestPlugin = require('../lib/maia-server').MaiaPlugin;
 // Port where we'll run the websocket server
 var port = 1337;
-var ghp = new GithubPlugin();
-var maiaServer = new MaiaServer(port, true);
+var ghp = new GithubPlugin(['all']);
+var tp = new TestPlugin(['all']);
+var maiaServer = new MaiaServer(port, true, null);
 maiaServer.addPlugin(ghp);
+maiaServer.addPlugin(tp);

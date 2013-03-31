@@ -1,14 +1,14 @@
 {
   "author": "J. Fernando Sánchez (balkian)",
-  "name": "maiaserver",
+  "name": "maia-server",
   "description": "Maia Server Implementation (http://gsi.dit.upm.es).",
-  "version": "0.2.1",
+  "version": "0.4.0",
   "repository": {
     "url": "git://github.com/gsi-upm/Maia"
   },
-  "main": "./lib/maiaserver",
+  "main": "./lib/maia-server",
   "bin": {
-    "maiaserver": "./bin/maiaserver"
+    "maiaserver": "./bin/maia-server"
   },
   "dependencies": {
     "websocket": ">=1.0.8",

@@ -1,5 +1,12 @@
+var MaiaPlugin = require('./maia-plugin').MaiaPlugin;
+
 var GithubPlugin = function(){
+    var mainArguments = Array.prototype.slice.call(arguments);
+    [].unshift.call(arguments,'GitHubPlugin');
+    MaiaPlugin.apply(this,arguments);
 }
+
+GithubPlugin.prototype = Object.create(MaiaPlugin.prototype);
 
 GithubPlugin.prototype.processOne = function(msg){
     var path = msg.name;
@@ -13,16 +20,13 @@ GithubPlugin.prototype.processOne = function(msg){
     }
     return msg;
 }
+
 GithubPlugin.prototype.process = function(msgs){
     var results = [];
     for(var i in msgs){
         results.push(this.processOne(msgs[i]))
     }
     return results;
-}
-
-GithubPlugin.prototype.getSubscriptions = function(){
-    return [];
 }
 
 exports.GithubPlugin = GithubPlugin;

@@ -1,0 +1,7 @@
+{
+  "mailer": {
+    "host": "smtp.gmail.com",
+    "username": "BLABLA@gmail.com",
+    "password": "password"
+  }
+}

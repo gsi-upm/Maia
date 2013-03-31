@@ -1,0 +1,30 @@
+{
+  "author": "J.Fernando Sánchez <balkian@gmail.com>",
+  "name": "maia-client",
+  "description": "Websocket client for the Maia architecture.",
+  "keywords": [
+    "hook",
+    "websockets",
+    "maia"
+  ],
+  "version": "0.3.0",
+  "bugs": {
+    "url": "http://github.com/gsi-upm/Maia/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/gsi-upm/Maia.git"
+  },
+  "bin": {
+    "maia-client": "./bin/maia-client"
+  },
+  "main": "./lib/maia-client",
+  "engines": {
+    "node": ">= v0.8.x"
+  },
+  "dependencies": {
+    "simple-colourful-logger": "*",
+    "websocket": ">=1.0.8"
+  },
+  "devDependencies": {}
+}

@@ -1,0 +1,8 @@
+#!/usr/bin/env node
+
+var MailerHook = require('../lib/mailer').MailerHook;
+
+var hook = new MailerHook();
+
+
+hook.connect('ws://127.0.0.1:1337');

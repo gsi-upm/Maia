@@ -1,0 +1,20 @@
+#!/usr/bin/env node
+
+var Client = require('../lib/maia-client').Client;
+
+var client = new Client({
+  name: "default-client"
+});
+
+client.connect('ws://127.0.0.1:1337');
+client.subscribe('**', function(json){
+    client.logger.debug('Received:', json);
+});
+var fn = function(event){
+    client.logger.debug('Bogus function', event);
+}
+client.subscribe('test', fn);
+
+setTimeout(function(){
+    client.unsubscribe('test', fn);
+}, 1000);

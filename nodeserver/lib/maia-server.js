@@ -143,6 +143,7 @@ MaiaServer.prototype = Object.create(webSocketServer.prototype);
 MaiaServer.prototype.send = function(obj){
     var res = Array(obj);
     for(plugin in this.plugins){
+        this.logger.debug('Processing for plugin:',this.plugins[plugin].name);
         res = this.plugins[plugin].process(res);
     }
     // broadcast message to all connected clients

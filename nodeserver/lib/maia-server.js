@@ -118,7 +118,6 @@ function MaiaServer(webSocketsServerPort, servestatic, app, levels){
                     }
                 }catch(err){
                     self.logger.error(err);
-                    throw err;
                 }
         });
         // user disconnected

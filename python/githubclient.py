@@ -14,12 +14,20 @@ import thread
 import time
 import json
 import argparse
-import os
+import subprocess
 
 def on_message(ws, message):
     print 'Received a commit!!'
     try:
-        os.system('git pull origin master')
+        st = subprocess.check_call('git pull origin master'.split())
+        if (st == 0):
+            toplevel = subprocess.check_output('git rev-parse --show-toplevel'.split()).strip()
+            changed = subprocess.check_output('git diff --name-only @{1}'.split()).split('\n')
+            packages = [k for k in changed if 'package.json' in k]
+            for i in packages:
+                folder = toplevel + '/' + i.rsplit('/',1)[0]
+                subprocess.call(['npm', 'install', folder])
+
     except Exception as ex:
         print ex
 
@@ -57,7 +65,8 @@ if __name__ == "__main__":
     ws.user = args.user
     ws.on_open = on_open
     ws.attempts = 0
-    while(ws.attempts<5):
+    # Wait for a minute. NPM install could take a while.
+    while(ws.attempts<12):
         ws.run_forever()
         time.sleep(5)
     print('Giving up :(')

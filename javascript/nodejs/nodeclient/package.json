@@ -7,7 +7,7 @@
     "websockets",
     "maia"
   ],
-  "version": "0.3.0",
+  "version": "0.4.0",
   "bugs": {
     "url": "http://github.com/gsi-upm/Maia/issues"
   },
@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "simple-colourful-logger": "*",
-    "websocket": ">=1.0.8"
+    "ws": ">=0.4"
   },
   "devDependencies": {}
 }

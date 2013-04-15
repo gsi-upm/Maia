@@ -2,7 +2,7 @@
   "author": "J. Fernando Sánchez (balkian)",
   "name": "maia-server",
   "description": "Maia Server Implementation (http://gsi.dit.upm.es).",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "repository": {
     "url": "git://github.com/gsi-upm/Maia"
   },
@@ -11,7 +11,7 @@
     "maiaserver": "./bin/maia-server"
   },
   "dependencies": {
-    "websocket": ">=1.0.8",
+    "ws": ">=0.4",
     "express": ">=3.1.0",
     "cli-color": "*",
     "simple-colourful-logger": "*"

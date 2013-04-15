@@ -9,11 +9,12 @@
 // http://martinsikora.com/nodejs-and-websocket-simple-chat-tutorial 
 // http://ejohn.org/blog/ecmascript-5-strict-mode-json-and-more/
 
-var webSocketServer = require('websocket').server;
+var webSocketServer = require('ws').Server;
 var express = require('express');
 var http = require('http');
 var path = require('path');
 var Logger = require('simple-colourful-logger').Logger;
+var util = require('util');
 
 function MaiaServer(webSocketsServerPort, servestatic, app, levels){
     var self = this;
@@ -39,7 +40,7 @@ function MaiaServer(webSocketsServerPort, servestatic, app, levels){
 
     var hookHandler = {
         name : 'Hooks Dispatcher',
-        sendUTF:  function(message){
+        send:  function(message){
             var msg = JSON.parse(message);
             self.logger.debug('Received Hook:',msg.name);
         }
@@ -52,7 +53,7 @@ function MaiaServer(webSocketsServerPort, servestatic, app, levels){
     webSocketServer.call(self, {
         // WebSocket server is tied to a HTTP server. WebSocket request is just
         // an enhanced HTTP request. For more info http://tools.ietf.org/html/rfc6455#page-6
-        httpServer: self.server
+        server: self.server
     });
     
 
@@ -79,28 +80,28 @@ function MaiaServer(webSocketsServerPort, servestatic, app, levels){
     });
 
     // Handle socket connections
-    self.on('request', function(request) {
-        self.logger.info((new Date()) + ' Connection from origin ' + request.origin + '.');
+    self.on('connection', function(connection) {
+        //self.logger.info((new Date()) + ' Connection from origin ' + request.origin + '.');
         // accept connection - you should check 'request.origin' to make sure that
         // client is connecting from your website
         // (http://en.wikipedia.org/wiki/Same_origin_policy)
-        var connection = request.accept(null, request.origin); 
+        //var connection = request.accept(null, request.origin); 
         // we need to know client index to remove them on 'close' event
         var index = self.clients.push(connection) - 1;
         self.logger.info((new Date()) + ' Connection accepted.');
-        self.logger.info('Connection: ' + connection);
+        self.logger.info('Connection: ' + util.inspect(connection._socket.remoteAddress+':'+connection._socket.remotePort));
         self.notifyPlugins('connection',connection);
-        connection.on('message', function(message) {
+        connection.on('message', function(message, flags) {
                 try{
                     self.logger.info((new Date()) + ' Received Message from '
-                                + connection.name + ': ' + message.utf8Data);
-                    var msg = JSON.parse(message.utf8Data);
+                                + connection.name + ': ' + message);
+                    var msg = JSON.parse(message);
                     msg.name = msg.name.split(self.separator);
                     if(msg.name[0] === 'username'){
                         connection.name = msg.data;
-                        connection.sendUTF('{"name":"accepted","data":"'+connection.name+'"}')
+                        connection.send('{"name":"accepted","data":"'+connection.name+'"}')
                     }else if (msg.name[0] === 'subscribe'){
-                        var path = msg.data.split(this.separator);
+                        var path = msg.data.split(self.separator);
                         self.subscribe(path,self.clients[index]);
                         self.logger.info(self.subscriptions);
                     }else if (msg.name[0] === 'unsubscribe'){
@@ -369,7 +370,7 @@ MaiaServer.prototype.pokeSubscribers = function(tokens ,event){
     event['forSubscription'] = tokens.join(this.separator);
     for(var subscriber in subs){
         this.logger.debug('Poking subscriber: '+subs[subscriber].name);
-        subs[subscriber].sendUTF(this.stringify(event));
+        subs[subscriber].send(this.stringify(event));
     }
     delete event['forSubscription'];
 }

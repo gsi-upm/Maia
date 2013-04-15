@@ -8,63 +8,80 @@
 // http://gsi.dit.upm.es
 // http://github.com/gsi-upm
 
-var WSClient = require('websocket').client,
+var WSClient = require('ws'),
     util = require('util'),
-    Logger = require('simple-colourful-logger').Logger;
+    Logger = require('simple-colourful-logger').Logger,
+    events = require('events');
 
-var Client = function(config) {
+var Client = function(url, config) {
     var self = this;
-    if(!config || !config.name){
+    if(!config){
+        self.config = {};
+    }else{
+        self.config = config;
+    }
+    if(!self. config.name){
         self.name = this.constructor.name;
     }else{
         self.name = config.name;
     }
+    if(!self.config.closeTimeout){
+        self.closeTimeout = 5000;
+    }
+    if(!self.config.maxattempts){
+            self.maxattempts = 12;
+    }
+    self.url = url;
     self.subscriptions = {};
     self.connected = false;
-    self.maxattempts = 10;
     self.attempts = 0;
     if(config && config.maxattempts){
         self.maxattempts = config.maxattempts;
     }
     self.logger = new Logger(self.name, ['all']);
-    WSClient.call(self,config); 
-    self.on('connect', self.connectHandler);
+    self.logger.debug('Name: '+self.name);
+    if(self.url){
+        self.connect();
+    }
 };
 
-util.inherits(Client, WSClient);
+util.inherits(Client, events.EventEmitter);
 
-Client.prototype.connectHandler = function(connection) {
+Client.prototype._openHandler = function() {
     var self = this;
     self.connected = true;
     self.attempts = 0;
-    self.connection = connection;
     for(var sub in self.subscriptions){
         for(var fn in self.subscriptions[sub]){
             self.subscribe(sub,self.subscriptions[sub][fn]);
         }
     }
-    connection.send('{ "name": "username", "data": "'+self.name+'" }');
-    connection.on('message', function(data) {
-        try{
-            self.logger.debug('Message received: ', data.utf8Data);
-            var json = JSON.parse(data.utf8Data);
-            if(json.forSubscription){
-                self.emit(json.forSubscription, json);
-            }else{
-                self.emit(json.name,json);
-            }
-        }catch(e){
-            self.logger.error('oups', e);
-        }
-    });
-    connection.on('close', function(data){
-        self.connected = false;
-        self.logger.debug('closed connection');
-        self.connect(self.url);
-    });
+    self.send('{ "name": "username", "data": "'+self.name+'" }');
 }
 
-Client.prototype.connect = function(){
+Client.prototype._closeHandler = function(data){
+    var self = this;
+    self.connected = false;
+    self.logger.debug('closed connection');
+    self.connect(self.url);
+}
+
+Client.prototype._messageHandler =  function(data, flags) {
+    var self = this;
+    try{
+        self.logger.debug('Message received: ', data);
+        var json = JSON.parse(data);
+        if(json.forSubscription){
+            self.emit(json.forSubscription, json);
+        }else{
+            self.emit(json.name,json);
+        }
+    }catch(e){
+        self.logger.error('oups', e);
+    }
+}
+
+Client.prototype.connect = function(url, config){
     var self = this;
     self.attempts += 1;
     if(self.connected){
@@ -74,34 +91,49 @@ Client.prototype.connect = function(){
         self.logger.error('Giving up!');
         process.exit(-1);
     }
-    WSClient.prototype.connect.apply(self,arguments);
-    self.logger.log('Trying to connect to ',self.url.href,'...');
-    setTimeout(function(){
+    if(!url){
+        url = self.url
+    }else{
+        self.url = url
+    }
+    if(!config){
+        config = self.config
+    }else{
+        self.config = config
+    }
+    self.socket = new WSClient(url, config);
+    self.socket.on('open', function(){ self._openHandler.apply(self, arguments)});
+    self.socket.on('close', function(){ self._closeHandler.apply(self, arguments)});
+    self.socket.on('message', function(){ self._messageHandler.apply(self, arguments)});
+    self.logger.log('Trying to connect to ',self.url,'...');
+    self.socket.on('error', function(){
+        setTimeout(function(){
             self.connect(self.url);
-    }, self.config.closeTimeout);
+            }, self.closeTimeout);
+    });
+}
+
+Client.prototype.send = function(){
+    this.socket.send.apply(this.socket, arguments);
 }
 
 Client.prototype.subscribe = function(event, fn){
-    if(this.connection){
+    if(this.connected){
         this.logger.debug('Subscribing to ',event);
-        this.connection.send('{ "name": "subscribe", "data": "'+event+'" }');
+        this.send('{ "name": "subscribe", "data": "'+event+'" }');
         this.on(event, fn);
-        if(this.subscriptions[event]){
-            if(this.subscriptions[event].indexOf(fn)<0){
-                this.subscriptions[event].push(fn);
-            }
-        }else{
-            this.subscriptions[event] = [fn];
+    }
+    if(this.subscriptions[event]){
+        if(this.subscriptions[event].indexOf(fn)<0){
+            this.subscriptions[event].push(fn);
         }
-
     }else{
-        this.once('connect', function(){
-            this.subscribe(event, fn);
-        }); 
+        this.subscriptions[event] = [fn];
     }
 }
 
 Client.prototype.unsubscribe = function(event, fn){
+    this.logger.debug('State: '+ this.readyState);
     if( typeof fn === 'undefined'){
         for(var fn in subscriptions[event]){
             this.unsubscribe(event,fn);
@@ -112,10 +144,13 @@ Client.prototype.unsubscribe = function(event, fn){
             var ix = this.subscriptions[event].indexOf(fn);
             if(ix >= 0){
                 this.subscriptions[event].splice(ix,1);
+                if(this.subscriptions[event].length<1){
+                    delete this.subscriptions[event]
+                }
             }
-            if(this.subscriptions[event].length < 1){
-                this.connection.send('{"name":"unsubscribe", "data":"'+event+'"}');
-            }
+        }
+        if(!this.subscriptions[event] && this.connected){
+            this.send('{"name":"unsubscribe", "data":"'+event+'"}');
         }
         this.logger.debug('Subscriptions: ', this.subscriptions);
     }

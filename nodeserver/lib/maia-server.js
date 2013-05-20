@@ -26,7 +26,6 @@ function MaiaServer(webSocketsServerPort, servestatic, app, levels){
     self.separator = "::";
     self.subscriptions = {};
     self.plugins = [];
-    self.clients = [];
     self.logger = new Logger('Maia-Server',['all']);
     if(servestatic){
         self.staticpath = path.resolve(__dirname, '../public');
@@ -85,9 +84,6 @@ function MaiaServer(webSocketsServerPort, servestatic, app, levels){
         // accept connection - you should check 'request.origin' to make sure that
         // client is connecting from your website
         // (http://en.wikipedia.org/wiki/Same_origin_policy)
-        //var connection = request.accept(null, request.origin); 
-        // we need to know client index to remove them on 'close' event
-        var index = self.clients.push(connection) - 1;
         self.logger.info((new Date()) + ' Connection accepted.');
         self.logger.info('Connection: ' + util.inspect(connection._socket.remoteAddress+':'+connection._socket.remotePort));
         self.notifyPlugins('connection',connection);
@@ -102,12 +98,12 @@ function MaiaServer(webSocketsServerPort, servestatic, app, levels){
                         connection.send('{"name":"accepted","data":"'+connection.name+'"}')
                     }else if (msg.name[0] === 'subscribe'){
                         var path = msg.data.split(self.separator);
-                        self.subscribe(path,self.clients[index]);
+                        self.subscribe(path,connection);
                         self.logger.info(self.subscriptions);
                     }else if (msg.name[0] === 'unsubscribe'){
                         var name = msg.data;
                         var path = msg.data.split(this.separator);
-                        self.unsubscribe(path,self.clients[index]);
+                        self.unsubscribe(path,connection);
                         self.logger.info(self.subscriptions);
                     }else {
                         var obj = {
@@ -122,13 +118,12 @@ function MaiaServer(webSocketsServerPort, servestatic, app, levels){
                 }
         });
         // user disconnected
-        connection.on('close', function(conn) {
-            self.notifyPlugins('close',conn);
+        connection.on('close', function() {
+            self.notifyPlugins('close',connection);
             self.logger.info((new Date()) + ' Peer '
                 + connection.remoteAddress + ' (' + connection.name + ')' + ' disconnected.');
-            self.unsubscribeAll(self.clients[index]);
+            self.unsubscribeAll(connection);
             self.logger.debug('Removed subscriptions. Now: ', self.subscriptions);
-            self.clients.splice(index, 1);
         });
     });
 }

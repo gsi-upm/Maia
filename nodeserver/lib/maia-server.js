@@ -93,10 +93,7 @@ function MaiaServer(webSocketsServerPort, servestatic, app, levels){
                                 + connection.name + ': ' + message);
                     var msg = JSON.parse(message);
                     msg.name = msg.name.split(self.separator);
-                    if(msg.name[0] === 'username'){
-                        connection.name = msg.data;
-                        connection.send('{"name":"accepted","data":"'+connection.name+'"}')
-                    }else if (msg.name[0] === 'subscribe'){
+                    if (msg.name[0] === 'subscribe'){
                         var path = msg.data.split(self.separator);
                         self.subscribe(path,connection);
                         self.logger.info(self.subscriptions);
@@ -111,7 +108,7 @@ function MaiaServer(webSocketsServerPort, servestatic, app, levels){
                             data: msg.data,
                             origin: connection.name,
                         };
-                        self.send(obj);
+                        self.send(obj,connection);
                     }
                 }catch(err){
                     self.logger.error(err);
@@ -135,17 +132,25 @@ MaiaServer.prototype = Object.create(webSocketServer.prototype);
  * A plugin may modify the event, generate more events, or even
  * silent the event (prevent it from being sent).
  */
-MaiaServer.prototype.send = function(obj){
+MaiaServer.prototype.send = function(obj, connection){
     var res = Array(obj);
     for(plugin in this.plugins){
-        this.logger.debug('Processing for plugin:',this.plugins[plugin].name);
-        res = this.plugins[plugin].process(res);
+        this.logger.debug('Sending. Processing for plugin:',this.plugins[plugin].name);
+        res = this.plugins[plugin].process(res, connection);
     }
     // broadcast message to all connected clients
     for(i in res){
         this.logger.debug('Sending:',res[i].name);
         this.sendToSubscribed(res[i]);
     }
+}
+
+/**
+ * Equivalent to send, but bypass plugin processing and subscription checking.
+ */
+MaiaServer.prototype._send = function(event , connection){
+    event.time = (new Date()).getTime();
+    connection.send(JSON.stringify(event))
 }
 
 /**
@@ -200,29 +205,38 @@ MaiaServer.prototype.unsubscribeAll = function(connection){
  *
  */
 MaiaServer.prototype.unsubscribe = function(path,connection){
-    var subs = this.getSubscriptions(path);
-    if(subs){
-        var ix = subs.indexOf(connection);
-        if(ix>-1){
-            subs.splice(ix,1);
-        }
-        var emptyChildren = false;
-        for(var depth=path.length-1;depth>=0;depth--){
-            var node = this.getNode(path.slice(0,depth+1));
+    var res = [[path,connection]];
+    for(plugin in this.plugins){
+        this.logger.debug('Unsubscribing. Processing for plugin:',this.plugins[plugin].name);
+        res = this.plugins[plugin].unsubscribe(res);
+    }
+    for(i in res){
+        path = res[i][0];
+        connection = res[i][1];
+        var subs = this.getSubscriptions(path);
+        if(subs){
+            var ix = subs.indexOf(connection);
+            if(ix>-1){
+                subs.splice(ix,1);
+            }
+            var emptyChildren = false;
+            for(var depth=path.length-1;depth>=0;depth--){
+                var node = this.getNode(path.slice(0,depth+1));
+                if(emptyChildren){
+                    delete node[path[depth+1]];
+                }
+                if(node._subscribers && node._subscribers.length<1){
+                    delete node._subscribers;
+                }
+                if(Object.keys(node).length == 0 || (Object.keys(node) == 1 && node._subscribers.length == 0)){
+                    emptyChildren = true;
+                }else{
+                    emptyChildren = false;
+                }
+            }
             if(emptyChildren){
-                delete node[path[depth+1]];
+                delete this.subscriptions[path[0]];
             }
-            if(node._subscribers && node._subscribers.length<1){
-                delete node._subscribers;
-            }
-            if(Object.keys(node).length == 0 || (Object.keys(node) == 1 && node._subscribers.length == 0)){
-                emptyChildren = true;
-            }else{
-                emptyChildren = false;
-            }
-        }
-        if(emptyChildren){
-            delete this.subscriptions[path[0]];
         }
     }
 }
@@ -339,21 +353,32 @@ MaiaServer.prototype.recursiveSearch = function(tokens, tree, parentK, parentT){
  */
 
 MaiaServer.prototype.subscribe = function(path,connection){
-    var leaf = this.subscriptions;
-    for(var token in path){
-        var key = path[token];
-        if(!leaf[key]){
-            leaf[key] = {};
+    var res = [[path,connection]];
+    for(plugin in this.plugins){
+        this.logger.debug('Subscribing. Processing for plugin:',this.plugins[plugin].name);
+        res = this.plugins[plugin].subscribe(res);
+    }
+    for(i in res){
+        path = res[i][0]
+        connection = res[i][1]
+        this.logger.debug('Subscribing: '+connection.name+' to '+path);
+        var leaf = this.subscriptions;
+        for(var token in path){
+            var key = path[token];
+            if(!leaf[key]){
+                leaf[key] = {};
+            }
+            leaf = leaf[key]
         }
-        leaf = leaf[key]
+        if(!leaf._subscribers){
+            leaf._subscribers = [connection,];
+        } else {
+            leaf._subscribers.push(connection);
+        }
+        this.logger.debug('Subscriptions: ', this.subscriptions);
+        this.notifyPlugins('subscription',path,connection);
+        this._send({name: "subscribed", data: path.join(this.separator)}, connection);
     }
-    if(!leaf._subscribers){
-        leaf._subscribers = [connection,];
-    } else {
-        leaf._subscribers.push(connection);
-    }
-    this.logger.debug('Subscriptions: ', this.subscriptions);
-    this.notifyPlugins('subscription',path,connection);
 }
 
 /**
@@ -365,7 +390,7 @@ MaiaServer.prototype.pokeSubscribers = function(tokens ,event){
     event['forSubscription'] = tokens.join(this.separator);
     for(var subscriber in subs){
         this.logger.debug('Poking subscriber: '+subs[subscriber].name);
-        subs[subscriber].send(this.stringify(event));
+        this._send(event, subs[subscriber]);
     }
     delete event['forSubscription'];
 }
@@ -375,7 +400,6 @@ MaiaServer.prototype.pokeSubscribers = function(tokens ,event){
  *
  */
 MaiaServer.prototype.sendToSubscribed = function(event){
-    event.time = (new Date()).getTime();
     var results = this.recursiveSearch(event.name,this.subscriptions)
     this.logger.debug('Found subscriptions: ',results);
     this.logger.debug('For event: ',event.name);

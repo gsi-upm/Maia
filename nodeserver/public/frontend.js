@@ -4,6 +4,7 @@ $(function () {
     // for better performance - to avoid searching in DOM
     var content = $('#content');
     var input = $('#input');
+    var type = $('#eventtype');
     var status = $('#status');
  
     // my name sent to the server
@@ -48,16 +49,24 @@ $(function () {
         } catch (e) {
             console.log('This doesn\'t look like a valid JSON: ', message.data);
             return;
-        }
-        if (json.name === 'accepted'){
+        }if (json.name == 'subscribed' && json.data == "**"){
+            console.log("Unsubscribing from message to avoid verbosity.");
+            connection.send('{"name":"unsubscribe","data":"message"}');
+        }if (json.name === 'accepted'){
             myName = json.data;
             connection.send('{"name":"subscribe", "data":"**"}');
+            connection.send('{"name":"subscribe", "data":"message"}');
             input.removeAttr('disabled');
+            type.removeAttr('disabled');
             addMessage('Server', null, 'connection accepted with username:'+ json.data, new Date());
+        }if (json.name === 'rejected'){
+            input.removeAttr('disabled');
+            addMessage('Server', null, 'username not accepted:'+ json.data, new Date());
         // NOTE: if you're not sure about the JSON structure
         // check the server source code above
         } else { // it's a single message
             input.removeAttr('disabled'); // let the user write another message
+            type.removeAttr('disabled'); // let the user write another message
             addMessage(json.origin, json.name, json.data,
                        new Date(json.time));
         }
@@ -73,7 +82,12 @@ $(function () {
             if (!txt) {
                 return;
             }
-            var msg = {name:'message', data: txt };
+            var eventtype = type.val();
+            if(eventtype === undefined || eventtype === ''){
+                eventtype = "message";
+            }
+            console.log('Type: ', eventtype );
+            var msg = {name:eventtype, data: txt };
             if (myName == false) {
                 msg.name = 'username';
                 msg.data = txt;

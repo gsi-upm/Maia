@@ -15,11 +15,14 @@ process.title = 'maia-server';
  
 var MaiaServer = require('../lib/maia-server').MaiaServer;
 var GithubPlugin = require('../lib/github-plugin').GithubPlugin;
+var AuthPlugin = require('../lib/auth-plugin').AuthPlugin;
 var TestPlugin = require('../lib/maia-server').MaiaPlugin;
 // Port where we'll run the websocket server
 var port = 1337;
 var ghp = new GithubPlugin(['all']);
+var auth = new AuthPlugin(['all']);
 var tp = new TestPlugin('testplugin',['all']);
 var maiaServer = new MaiaServer(port, true, null);
 maiaServer.addPlugin(ghp);
 maiaServer.addPlugin(tp);
+maiaServer.addPlugin(auth);

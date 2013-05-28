@@ -24,4 +24,10 @@ MaiaPlugin.prototype.getSubscriptions = function(){
 MaiaPlugin.prototype.process = function(events){
     return events;
 }
+MaiaPlugin.prototype.subscribe = function(subscriptions){
+    return subscriptions;
+}
+MaiaPlugin.prototype.unsubscribe = function(subscriptions){
+    return subscriptions;
+}
 exports.MaiaPlugin = MaiaPlugin

@@ -18,6 +18,7 @@ var util = require('util');
 
 function MaiaServer(webSocketsServerPort, servestatic, app, levels){
     var self = this;
+    self.name = "Maia-Server"
     if (!app || typeof app === 'undefined' || typeof app === 'null'){
         self.app = express();
     }else{
@@ -74,7 +75,7 @@ function MaiaServer(webSocketsServerPort, servestatic, app, levels){
             }
         };
         self.logger.info('Received:',outevent.name);
-        self.send(outevent);
+        self.send(outevent,self);
         res.end();
     });
 

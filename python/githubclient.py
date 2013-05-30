@@ -17,19 +17,24 @@ import argparse
 import subprocess
 
 def on_message(ws, message):
-    print 'Received a commit!!'
-    try:
-        st = subprocess.check_call('git pull origin master'.split())
-        if (st == 0):
-            toplevel = subprocess.check_output('git rev-parse --show-toplevel'.split()).strip()
-            changed = subprocess.check_output('git diff --name-only @{1}'.split()).split('\n')
-            packages = [k for k in changed if 'package.json' in k]
-            for i in packages:
-                folder = toplevel + '/' + i.rsplit('/',1)[0]
-                subprocess.call(['npm', 'install', folder])
+    mymsg = json.loads(message)
+    print ">Event received: %s" % mymsg['name']
+    if 'forSubscription' in mymsg:
+        print '  **Received a commit!!'
+        try:
+            st = subprocess.check_call('git pull origin master'.split())
+            if (st == 0):
+                toplevel = subprocess.check_output('git rev-parse --show-toplevel'.split()).strip()
+                changed = subprocess.check_output('git diff --name-only @{1}'.split()).split('\n')
+                packages = [k for k in changed if 'package.json' in k]
+                for i in packages:
+                    folder = toplevel + '/' + i.rsplit('/',1)[0]
+                    subprocess.call(['npm', 'install', folder])
 
-    except Exception as ex:
-        print ex
+        except Exception as ex:
+            print ex
+    else:
+        print "  **Ignoring"
 
 def on_error(ws, error):
     ws.attempts+=1

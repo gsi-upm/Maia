@@ -198,7 +198,9 @@ MaiaServer.prototype.unsubscribeAll = function(connection){
             break;
         }
         var n = this.getNode(path);
-        this.unsubscribe(path,connection);
+        if(n['_subscribers'] && n['_subscribers'].indexOf(connection)>=0){
+            this.unsubscribe(path,connection);
+        }
         for(var ix in n){
             if(ix !== '_subscribers'){
                 stack.push(path.concat(Array(ix)));
@@ -214,7 +216,7 @@ MaiaServer.prototype.unsubscribeAll = function(connection){
 MaiaServer.prototype.unsubscribe = function(path,connection){
     var res = [[path,connection]];
     for(plugin in this.plugins){
-        this.logger.debug('Unsubscribing. Processing for plugin:',this.plugins[plugin].name);
+        this.logger.debug('Unsubscribing from '+path+'. Processing for plugin:',this.plugins[plugin].name);
         res = this.plugins[plugin].unsubscribe(res);
     }
     for(i in res){

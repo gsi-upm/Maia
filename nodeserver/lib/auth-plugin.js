@@ -26,10 +26,10 @@ AuthPlugin.prototype.processOne = function(msg, connection){
             connection.name = name;
             this.taken.push(name);
             this.logger.debug('Accepted: ' + name);
-            this.server._send({name:"accepted",data:connection.name}, connection)
+            this.server.send({name:"accepted",data:connection.name}, connection)
         }else{
             this.logger.debug('Already taken: ' + name);
-            this.server._send({name:"rejected",data: name} , connection)
+            this.server.send({name:"rejected",data: name} , connection)
         }
         return;
     }else{

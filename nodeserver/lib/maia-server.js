@@ -75,7 +75,7 @@ function MaiaServer(webSocketsServerPort, servestatic, app, levels){
             }
         };
         self.logger.info('Received:',outevent.name);
-        self.send(outevent,self);
+        self.process(outevent,self);
         res.end();
     });
 
@@ -109,7 +109,7 @@ function MaiaServer(webSocketsServerPort, servestatic, app, levels){
                             data: msg.data,
                             origin: connection.name,
                         };
-                        self.send(obj,connection);
+                        self.process(obj,connection);
                     }
                 }catch(err){
                     self.logger.error(err);
@@ -132,8 +132,10 @@ MaiaServer.prototype = Object.create(webSocketServer.prototype);
  * Adds an event to be sent, and processes it in each plugin.
  * A plugin may modify the event, generate more events, or even
  * silent the event (prevent it from being sent).
+ * The second argument is the connection that originated the event,
+ * so plugins can modify and act on it.
  */
-MaiaServer.prototype.send = function(obj, connection){
+MaiaServer.prototype.process = function(obj, connection){
     var res = Array(obj);
     for(plugin in this.plugins){
         this.logger.debug('Sending. Processing for plugin:',this.plugins[plugin].name);
@@ -147,10 +149,14 @@ MaiaServer.prototype.send = function(obj, connection){
 }
 
 /**
- * Equivalent to send, but bypass plugin processing and subscription checking.
+ * Send an event to a connection bypassing plugin processing and subscription checking.
  */
-MaiaServer.prototype._send = function(event , connection){
+MaiaServer.prototype.send = function(event, connection){
     event.time = (new Date()).getTime();
+    var name = event.name;
+    if(name instanceof Array){
+        event.name = name.join(this.separator);
+    }
     connection.send(JSON.stringify(event))
 }
 
@@ -378,7 +384,7 @@ MaiaServer.prototype.subscribe = function(path,connection){
         }
         this.logger.debug('Subscriptions: ', this.subscriptions);
         this.notifyPlugins('subscription',path,connection);
-        this._send({name: "subscribed", data: path.join(this.separator)}, connection);
+        this.send({name: "subscribed", data: path.join(this.separator)}, connection);
     }
 }
 
@@ -391,7 +397,7 @@ MaiaServer.prototype.pokeSubscribers = function(tokens ,event){
     event['forSubscription'] = tokens.join(this.separator);
     for(var subscriber in subs){
         this.logger.debug('Poking subscriber: '+subs[subscriber].name);
-        this._send(event, subs[subscriber]);
+        this.send(event, subs[subscriber]);
     }
     delete event['forSubscription'];
 }

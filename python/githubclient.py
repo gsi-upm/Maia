@@ -47,7 +47,7 @@ def on_close(ws):
 def on_open(ws):
     ws.attempts=0
     print 'Open'
-    ws.send('{"name":"subscribe","data": "hook::github::%s::%s"}' % (ws.user,ws.repository));
+    ws.send('{"name":"subscribe","data": {"name": "hook::github::%s::%s"}}' % (ws.user,ws.repository));
     time.sleep(2)
 
 if __name__ == "__main__":

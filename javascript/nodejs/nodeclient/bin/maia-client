@@ -6,14 +6,18 @@ var client = new Client('ws://127.0.0.1:1337',{
   name: "default-client"
 });
 
-client.subscribe('**', function(json){
-    client.logger.debug('Received:', json);
-});
-var fn = function(event){
-    client.logger.debug('Bogus function', event);
-}
-client.subscribe('test', fn);
+client.socket.on('open', function(){
+    client.subscribe('**', function(json){
+        client.logger.debug('Received:', json);
+    });
 
-setTimeout(function(){
-    client.unsubscribe('test', fn);
-}, 10000);
+    var fn = function(event){
+        client.logger.debug('Bogus function', event);
+    }
+    client.subscribe('test', fn);
+
+    setTimeout(function(){
+        client.unsubscribe('test', fn);
+        process.exit(0);
+    }, 10000);
+});

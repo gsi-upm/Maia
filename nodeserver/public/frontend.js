@@ -49,16 +49,16 @@ $(function () {
         } catch (e) {
             console.log('This doesn\'t look like a valid JSON: ', message.data);
             return;
-        }if (json.name == 'subscribed' && json.data == "**"){
+        }if (json.name == 'subscribed' && json.data.name == "**"){
             console.log("Unsubscribing from message to avoid verbosity.");
-            connection.send('{"name":"unsubscribe","data":"message"}');
+            connection.send('{"name":"unsubscribe","data":{"name": "message"}}');
         }if (json.name === 'accepted'){
             myName = json.data;
-            connection.send('{"name":"subscribe", "data":"**"}');
-            connection.send('{"name":"subscribe", "data":"message"}');
+            connection.send('{"name":"subscribe", "data":{"name":"**"}}');
+            connection.send('{"name":"subscribe", "data":{"name":"message"}}');
             input.removeAttr('disabled');
             type.removeAttr('disabled');
-            addMessage('Server', null, 'connection accepted with username:'+ json.data, new Date());
+            addMessage('Server', null, 'connection accepted with username:'+ json.data.name, new Date());
         }if (json.name === 'rejected'){
             input.removeAttr('disabled');
             addMessage('Server', null, 'username not accepted:'+ json.data, new Date());
@@ -90,7 +90,7 @@ $(function () {
             var msg = {name:eventtype, data: txt };
             if (myName == false) {
                 msg.name = 'username';
-                msg.data = txt;
+                msg.data = {name: txt};
             }
             // send the message as an ordinary text
             connection.send(JSON.stringify(msg));

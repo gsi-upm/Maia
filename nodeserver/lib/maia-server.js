@@ -95,12 +95,11 @@ function MaiaServer(webSocketsServerPort, servestatic, app, levels){
                     var msg = JSON.parse(message);
                     msg.name = msg.name.split(self.separator);
                     if (msg.name[0] === 'subscribe'){
-                        var path = msg.data.split(self.separator);
+                        var path = msg.data.name.split(self.separator);
                         self.subscribe(path,connection);
                         self.logger.info(self.subscriptions);
                     }else if (msg.name[0] === 'unsubscribe'){
-                        var name = msg.data;
-                        var path = msg.data.split(this.separator);
+                        var path = msg.data.name.split(this.separator);
                         self.unsubscribe(path,connection);
                         self.logger.info(self.subscriptions);
                     }else {
@@ -113,6 +112,9 @@ function MaiaServer(webSocketsServerPort, servestatic, app, levels){
                     }
                 }catch(err){
                     self.logger.error(err);
+                    self.logger.error('Stack: ', err.stack);
+                    self.logger.error('Message:'+message);
+                    self.logger.error('Flags:',flags);
                 }
         });
         // user disconnected
@@ -152,7 +154,9 @@ MaiaServer.prototype.process = function(obj, connection){
  * Send an event to a connection bypassing plugin processing and subscription checking.
  */
 MaiaServer.prototype.send = function(event, connection){
-    event.time = (new Date()).getTime();
+    if(!event.time){
+        event.time = (new Date()).getTime();
+    }
     var name = event.name;
     if(name instanceof Array){
         event.name = name.join(this.separator);
@@ -386,7 +390,7 @@ MaiaServer.prototype.subscribe = function(path,connection){
         }
         this.logger.debug('Subscriptions: ', this.subscriptions);
         this.notifyPlugins('subscription',path,connection);
-        this.send({name: "subscribed", data: path.join(this.separator)}, connection);
+        this.send({name: "subscribed", data: {name: path.join(this.separator)}}, connection);
     }
 }
 

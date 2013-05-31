@@ -56,7 +56,7 @@ Client.prototype._openHandler = function() {
             self.subscribe(sub,self.subscriptions[sub][fn]);
         }
     }
-    self.send('{ "name": "username", "data": "'+self.name+'" }');
+    self.send('username', {"name": self.name});
 }
 
 Client.prototype._closeHandler = function(data){
@@ -113,14 +113,19 @@ Client.prototype.connect = function(url, config){
     });
 }
 
-Client.prototype.send = function(){
-    this.socket.send.apply(this.socket, arguments);
+Client.prototype.sendRaw = function(obj){
+    this.socket.send(JSON.stringify(obj));
+}
+
+Client.prototype.send = function(name, data){
+    this.logger.debug('Sending: ', name, data);
+    this.sendRaw({"name": name, "time": new Date().getTime(), "data": data})
 }
 
 Client.prototype.subscribe = function(event, fn){
     if(this.connected){
         this.logger.debug('Subscribing to ',event);
-        this.send('{ "name": "subscribe", "data": "'+event+'" }');
+        this.send("subscribe", {name: event});
         this.on(event, fn);
     }
     if(this.subscriptions[event]){
@@ -134,6 +139,7 @@ Client.prototype.subscribe = function(event, fn){
 
 Client.prototype.unsubscribe = function(event, fn){
     this.logger.debug('State: '+ this.readyState);
+    this.removeListener(event, fn);
     if( typeof fn === 'undefined'){
         for(var fn in subscriptions[event]){
             this.unsubscribe(event,fn);
@@ -150,7 +156,7 @@ Client.prototype.unsubscribe = function(event, fn){
             }
         }
         if(!this.subscriptions[event] && this.connected){
-            this.send('{"name":"unsubscribe", "data":"'+event+'"}');
+            this.send('unsubscribe', {"name": event});
         }
         this.logger.debug('Subscriptions: ', this.subscriptions);
     }

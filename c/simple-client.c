@@ -147,7 +147,7 @@ void send_message(char* msg, struct libwebsocket_context *context,
 
 void subscribe_to(char* msg, struct libwebsocket_context *context,
 		struct libwebsocket *wsi){
-	char template[] = "{\"name\":\"subscribe\",\"data\":\"%s\"}";
+	char template[] = "{\"name\":\"subscribe\",\"data\":{\"name\":\"%s\"}}";
 
 	char event[strlen(template)+strlen(msg)-2];
 	sprintf(event,template,msg);

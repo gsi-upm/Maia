@@ -21,7 +21,7 @@ AuthPlugin.prototype.processOne = function(msg, connection){
     var path = msg.name;
     if(path[0] === 'username'){
         this.logger.debug('Processing '+path[0]+' ->' + typeof path[0]);
-        var name = msg.data;
+        var name = msg.data.name;
         if(this.taken.indexOf(name)<0){
             connection.name = name;
             this.taken.push(name);
@@ -41,7 +41,10 @@ AuthPlugin.prototype.process = function(msgs, conn){
     this.logger.debug('Processing: '+ conn.name);
     var results = [];
     for(var i in msgs){
-        results.push(this.processOne(msgs[i], conn))
+        var temp = this.processOne(msgs[i], conn);
+        if(temp){
+            results.push(temp);
+        }
     }
     return results;
 }

@@ -27,7 +27,7 @@ def on_close(ws):
 def on_open(ws):
     ws.send('{"name":"username","data": "%s"}' % "python_client");
     time.sleep(1);
-    ws.send('{"name":"subscribe","data": "%s"}' % ws.subscribe);
+    ws.send('{"name":"subscribe","data": {"name" : "%s"}}' % ws.subscribe);
     time.sleep(2)
     def run(*args):
         time.sleep(3)

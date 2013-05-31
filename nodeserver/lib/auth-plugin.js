@@ -52,13 +52,14 @@ AuthPlugin.prototype.process = function(msgs, conn){
 AuthPlugin.prototype.subscribe = function(subs){
     var results = [];
     for(sub in subs){
-        path = subs[sub][0];
-        connection = subs[sub][1];
+        var path = subs[sub][0];
+        var connection = subs[sub][1];
+        var message = subs[sub][2]; 
         if(path[0] === '**' && this.whitelist.indexOf(connection.name)<0){
             this.logger.debug('NOT allowed to subscribe');
         }else{
             this.logger.debug('Allowed to subscribe');
-            results.push([path,connection]);
+            results.push([path, connection, message]);
         }
     }
     return results

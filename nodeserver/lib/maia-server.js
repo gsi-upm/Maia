@@ -27,7 +27,7 @@ function MaiaServer(webSocketsServerPort, servestatic, app, levels){
     self.separator = "::";
     self.subscriptions = {};
     self.plugins = [];
-    self.logger = new Logger('Maia-Server',['all']);
+    self.logger = new Logger('Maia-Server',levels);
     if(servestatic){
         self.staticpath = path.resolve(__dirname, '../public');
         self.app.use(express.static(self.staticpath));
@@ -96,11 +96,11 @@ function MaiaServer(webSocketsServerPort, servestatic, app, levels){
                     msg.name = msg.name.split(self.separator);
                     if (msg.name[0] === 'subscribe'){
                         var path = msg.data.name.split(self.separator);
-                        self.subscribe(path,connection);
+                        self.subscribe(path, connection, msg);
                         self.logger.info(self.subscriptions);
                     }else if (msg.name[0] === 'unsubscribe'){
                         var path = msg.data.name.split(this.separator);
-                        self.unsubscribe(path,connection);
+                        self.unsubscribe(path, connection, msg);
                         self.logger.info(self.subscriptions);
                     }else {
                         var obj = {
@@ -119,7 +119,7 @@ function MaiaServer(webSocketsServerPort, servestatic, app, levels){
         });
         // user disconnected
         connection.on('close', function() {
-            self.notifyPlugins('close',connection);
+            self.notifyPlugins('close', connection);
             self.logger.info((new Date()) + ' Peer '
                 + connection.remoteAddress + ' (' + connection.name + ')' + ' disconnected.');
             self.unsubscribeAll(connection);
@@ -217,10 +217,10 @@ MaiaServer.prototype.unsubscribeAll = function(connection){
  * Delete a specific subscription for a connection (user).
  *
  */
-MaiaServer.prototype.unsubscribe = function(path,connection){
-    var res = [[path,connection]];
+MaiaServer.prototype.unsubscribe = function(path, connection, message){
+    var res = [[path, connection, message]];
     for(plugin in this.plugins){
-        this.logger.debug('Unsubscribing from '+path+'. Processing for plugin:',this.plugins[plugin].name);
+        this.logger.debug('Unsubscribing from '+path+'. Processing for plugin:', this.plugins[plugin].name);
         res = this.plugins[plugin].unsubscribe(res);
     }
     for(i in res){
@@ -365,8 +365,8 @@ MaiaServer.prototype.recursiveSearch = function(tokens, tree, parentK, parentT){
  *
  */
 
-MaiaServer.prototype.subscribe = function(path,connection){
-    var res = [[path,connection]];
+MaiaServer.prototype.subscribe = function(path,connection, message){
+    var res = [[path, connection, message]];
     for(plugin in this.plugins){
         this.logger.debug('Subscribing. Processing for plugin:',this.plugins[plugin].name);
         res = this.plugins[plugin].subscribe(res);
@@ -390,7 +390,11 @@ MaiaServer.prototype.subscribe = function(path,connection){
         }
         this.logger.debug('Subscriptions: ', this.subscriptions);
         this.notifyPlugins('subscription',path,connection);
-        this.send({name: "subscribed", data: {name: path.join(this.separator)}}, connection);
+        var name = path; 
+        if(path instanceof Array){
+            name = name.join(this.separator);
+        }
+        this.send({name: "subscribed", data: {"name": name}}, connection);
     }
 }
 

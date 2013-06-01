@@ -317,11 +317,13 @@ MaiaServer.prototype.recursiveSearch = function(tokens, tree, parentK, parentT){
         matches.push([null,1]);
     }else if( tree[key] ){
         matches.push([key,1]);
-    }else if(tree['*']){
+    }
+    if(tree['*']){
         matches.push(['*',1]);
     }
     if(tree['**']){
         matches.push(['**',1]);
+        matches.push(['**',0]);
     }
     if(parentT === '**'){
         matches.push([null,1]);

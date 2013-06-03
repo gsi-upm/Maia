@@ -6,7 +6,7 @@ var WS = require('ws');
 var assert = require('assert');
 
 describe('Maia-Server', function(){
-    var port = 7331;
+    var port = 1338;
     var server = new MaiaServer(port, true, null, []);
 
     describe('Plugins', function(){
@@ -17,7 +17,7 @@ describe('Maia-Server', function(){
         })
     })
     describe('Subscriptions', function(){
-        it('Should be able to register to an event', function(done){
+        it('Should be able to subscribe to an event. Ex. "test"', function(done){
             var ws = new WS('ws://localhost:'+port);
             ws.on('open', function() {
                 ws.send(JSON.stringify({name:"subscribe",data:{name: "test"}}));
@@ -29,10 +29,50 @@ describe('Maia-Server', function(){
                 }
             });
         });
+        it('Should be able to unsubscribe from an event. Ex. "test::unsubs"', function(done){
+            var ws = new WS('ws://localhost:'+port);
+            ws.on('open', function() {
+                ws.send(JSON.stringify({name:"unsubscribe",data:{name: "test::unsubs"}}));
+            });
+            ws.on('message', function(msg){
+                var json = JSON.parse(msg);
+                if(json.name === 'unsubscribed' && json.data.name == "test::unsubs"){
+                    ws.close();
+                    done();
+                }
+            });
+        });
+        it('Should be able to unsubscribe from all the events. Ex. "test::all" "*"', function(done){
+            var ws = new WS('ws://localhost:'+port);
+            var masks = ["test::all","*"];
+            ws.on('open', function() {
+                for(var mask in masks){
+                    ws.send(JSON.stringify({name:"subscribe",data:{name: masks[mask]}}));
+                }
+                ws.send(JSON.stringify({name:"unsubscribeAll", data: ""}));
+            });
+            ws.on('message', function(msg){
+                var json = JSON.parse(msg);
+                if(json.name === 'unsubscribed'){
+                    var ix = masks.indexOf(json.data.name);
+                    masks.splice(ix,1);
+                    if(ix<0){
+                        done(new Error('Unexpected event: "'+json.data.name+'". Expected: '+masks));
+                    }
+                    if(masks.length<1){
+                        ws.close();
+                        done();
+                    }
+                }
+            });
+        });
         it('Should be able to receive subscribed events', function(done){
             var ws = new WS('ws://localhost:'+port);
             ws.on('open', function() {
                 ws.send(JSON.stringify({name:"subscribe",data:{name: "test"}}));
+                setTimeout(function(){
+                    server.process({name: ['test'], data: "bar"}, this);
+                },10);
             });
             ws.on('message', function(msg){
                 var json = JSON.parse(msg);
@@ -41,9 +81,6 @@ describe('Maia-Server', function(){
                     done();
                 }
             });
-            setTimeout(function(){
-                server.process({name: ['test'], data: "bar"}, this);
-            },10);
         });
         it('Must not receive events it is not subscribed to', function(done){
             var ws = new WS('ws://localhost:'+port);
@@ -53,6 +90,7 @@ describe('Maia-Server', function(){
             ws.on('message', function(msg){
                 var json = JSON.parse(msg);
                 if(json.forSubscription){
+                    ws.close();
                     done(new Error('unexpected event'));
                 }
             });
@@ -61,7 +99,7 @@ describe('Maia-Server', function(){
                 setTimeout(function(){
                     ws.close();
                     done();
-                }, 100);
+                }, 10);
             },10);
         });
         it('In sent events, The * wildcard should match all "simple" events', function(done){
@@ -150,7 +188,7 @@ describe('Maia-Server', function(){
             setTimeout(function(){
                 assert.equal(4, received.length);
                 done();
-            }, 100);
+            }, 10);
         });
         it('The * wildcard in The middle should replace single tokens', function(done){
             var testcases = [["**"],["foo"], ["*"], ["foo","mid","bar"], ["foo","bar"], ["*","bar"], ["foo","*"], ["foo","**","bar"], ["**","bar"]];
@@ -200,7 +238,7 @@ describe('Maia-Server', function(){
 })
 
 describe('Auth-Plugin', function(){
-    var port = 1337;
+    var port = 1339;
     var server = new MaiaServer(port, true, null, []);
     var auth = new AuthPlugin([]);
     server.addPlugin(auth);
@@ -250,6 +288,44 @@ describe('Auth-Plugin', function(){
         });
     });
     describe('Torvalds user', function(){
+        it('Should be able to log in', function(done){
+            var ws = new WS('ws://localhost:'+port);
+            ws.on('open', function() {
+                ws.send(JSON.stringify({name:"username",data:{name: "Torvalds"}}));
+            });
+            ws.on('message', function(msg){
+                var json = JSON.parse(msg);
+                if(json.name === 'username::accepted'){
+                    ws.close();
+                    done();
+                }
+            });
+        });
+        it('Should not be able to log in if there is another Torvalds', function(done){
+            var ws = new WS('ws://localhost:'+port);
+            var ws2 = new WS('ws://localhost:'+port);
+            ws.on('open', function() {
+                ws.send(JSON.stringify({name:"username",data:{name: "Torvalds"}}));
+            });
+            ws.on('message', function(msg){
+                var json = JSON.parse(msg);
+                if(json.name === 'username::accepted'){
+                    ws2.send(JSON.stringify({name:"username",data:{name: "Torvalds"}}));
+                    ws2.on('message', function(msg){
+                        var json = JSON.parse(msg);
+                        if(json.name === 'username::accepted'){
+                            ws.close();
+                            ws2.close();
+                            done(new Error('Username accepted'));
+                        }else if (json.name === 'username::rejected'){
+                            ws.close();
+                            ws2.close();
+                            done();
+                        }
+                    });
+                }
+            });
+        });
         it('Should be able to subscribe to **', function(done){
             var ws = new WS('ws://localhost:'+port);
             ws.on('open', function() {
@@ -259,6 +335,7 @@ describe('Auth-Plugin', function(){
             ws.on('message', function(msg){
                 var json = JSON.parse(msg);
                 if(json.name === 'test'){
+                    ws.close();
                     done();
                 }
             });

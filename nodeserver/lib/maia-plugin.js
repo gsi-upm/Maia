@@ -19,10 +19,13 @@ MaiaPlugin = function(name, levels){
 }
 MaiaPlugin.prototype = Object.create(EventEmitter.prototype);
 MaiaPlugin.prototype.getSubscriptions = function(){
-    return [''];
+    return [];
 }
 MaiaPlugin.prototype.setServer = function(server){
     this.server = server;
+}
+MaiaPlugin.prototype.send = function(msg){
+    return;
 }
 MaiaPlugin.prototype.process = function(events){
     return events;

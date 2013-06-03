@@ -428,7 +428,7 @@ MaiaServer.prototype.sendToSubscribed = function(event){
 }
 
 MaiaServer.prototype.addPlugin = function(plug){
-    plug.server = this;
+    plug.setServer(this);
     var subs = plug.getSubscriptions();
     this.plugins.push(plug);
 };

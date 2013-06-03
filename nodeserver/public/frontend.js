@@ -52,7 +52,7 @@ $(function () {
         }if (json.name == 'subscribed' && json.data.name == "**"){
             console.log("Unsubscribing from message to avoid verbosity.");
             connection.send('{"name":"unsubscribe","data":{"name": "message"}}');
-        }if (json.name === 'accepted'){
+        }if (json.name === 'username::accepted'){
             myName = json.data;
             status.text('Message:');
             connection.send('{"name":"subscribe", "data":{"name":"**"}}');
@@ -60,7 +60,7 @@ $(function () {
             input.removeAttr('disabled');
             type.removeAttr('disabled');
             addMessage('Server', null, 'connection accepted with username:'+ json.data.name, new Date());
-        }if (json.name === 'rejected'){
+        }if (json.name === 'username::rejected'){
             input.removeAttr('disabled');
             addMessage('Server', null, 'username not accepted:'+ json.data, new Date());
         // NOTE: if you're not sure about the JSON structure

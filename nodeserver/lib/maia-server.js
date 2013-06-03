@@ -102,6 +102,9 @@ function MaiaServer(webSocketsServerPort, servestatic, app, levels){
                         var path = msg.data.name.split(this.separator);
                         self.unsubscribe(path, connection, msg);
                         self.logger.info(self.subscriptions);
+                    }else if (msg.name[0] === 'unsubscribeAll'){
+                        self.unsubscribeAll(connection, msg);
+                        self.logger.info(self.subscriptions);
                     }else {
                         var obj = {
                             name: msg.name,
@@ -191,7 +194,7 @@ MaiaServer.prototype.htmlEntities = function(str) {
  * Remove all the subscriptions for a certain connection.
  *
  */ 
-MaiaServer.prototype.unsubscribeAll = function(connection){
+MaiaServer.prototype.unsubscribeAll = function(connection, message){
     var finished = false;
     var stack = [];
     stack.push([]);
@@ -203,7 +206,7 @@ MaiaServer.prototype.unsubscribeAll = function(connection){
         }
         var n = this.getNode(path);
         if(n['_subscribers'] && n['_subscribers'].indexOf(connection)>=0){
-            this.unsubscribe(path,connection);
+            this.unsubscribe(path,connection, message);
         }
         for(var ix in n){
             if(ix !== '_subscribers'){
@@ -231,6 +234,11 @@ MaiaServer.prototype.unsubscribe = function(path, connection, message){
             var ix = subs.indexOf(connection);
             if(ix>-1){
                 subs.splice(ix,1);
+                var name = path; 
+                if(path instanceof Array){
+                    name = name.join(this.separator);
+                }
+                this.send({name: "unsubscribed", data: {"name": name}}, connection);
             }
             var emptyChildren = false;
             for(var depth=path.length-1;depth>=0;depth--){
@@ -387,8 +395,10 @@ MaiaServer.prototype.subscribe = function(path,connection, message){
         }
         if(!leaf._subscribers){
             leaf._subscribers = [connection,];
-        } else {
+        }else if(leaf._subscribers.indexOf(connection)<0){
             leaf._subscribers.push(connection);
+        }else{
+            this.logger.debug('Already subscribed.');
         }
         this.logger.debug('Subscriptions: ', this.subscriptions);
         this.notifyPlugins('subscription',path,connection);

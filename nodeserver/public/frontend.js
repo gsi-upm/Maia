@@ -54,6 +54,7 @@ $(function () {
             connection.send('{"name":"unsubscribe","data":{"name": "message"}}');
         }if (json.name === 'accepted'){
             myName = json.data;
+            status.text('Message:');
             connection.send('{"name":"subscribe", "data":{"name":"**"}}');
             connection.send('{"name":"subscribe", "data":{"name":"message"}}');
             input.removeAttr('disabled');
@@ -79,8 +80,9 @@ $(function () {
         if (e.keyCode === 13) {
             console.log('Pressed enter');
             var txt = $(this).val();
-            if (!txt) {
-                return;
+            try{                
+                txt = JSON.parse(txt);
+            }catch(ex){
             }
             var eventtype = type.val();
             if(eventtype === undefined || eventtype === ''){

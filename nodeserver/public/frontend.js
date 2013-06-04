@@ -21,58 +21,82 @@ $(function () {
         $('span').hide();
         return;
     }
- 
-    // open connection
-    var connection = new WebSocket('ws://'+location.host);
- 
-    connection.onopen = function () {
-        // first we want users to enter their names
-        input.removeAttr('disabled');
-        status.text('Choose name:');
-    };
- 
-    connection.onerror = function (error) {
-        // just in there were some problems with conenction...
-        content.html($('<p>', { text: 'Sorry, but there\'s some problem with your '
-                                    + 'connection or the server is down.</p>' } ));
-    };
- 
-    // most important part - incoming messages
-    connection.onmessage = function (message) {
-        // try to parse JSON message. Because we know that the server always returns
-        // JSON this should work without any problem but we should make sure that
-        // the massage is not chunked or otherwise damaged.
-        try {
-            var json = JSON.parse(message.data);
-            console.log('Received message:');
-            console.log(json);
-        } catch (e) {
-            console.log('This doesn\'t look like a valid JSON: ', message.data);
-            return;
-        }if (json.name == 'subscribed' && json.data.name == "**"){
-            console.log("Unsubscribing from message to avoid verbosity.");
-            connection.send('{"name":"unsubscribe","data":{"name": "message"}}');
-        }if (json.name === 'username::accepted'){
-            myName = json.data;
-            status.text('Message:');
-            connection.send('{"name":"subscribe", "data":{"name":"**"}}');
-            connection.send('{"name":"subscribe", "data":{"name":"message"}}');
+
+    var connection;
+    var subscriptions = [];
+
+    function connectClient(){ 
+        // open connection
+        connection = new WebSocket('ws://'+location.host);
+     
+        connection.onopen = function () {
+            // first we want users to enter their names
             input.removeAttr('disabled');
-            type.removeAttr('disabled');
-            addMessage('Server', null, 'connection accepted with username:'+ json.data.name, new Date());
-        }if (json.name === 'username::rejected'){
-            input.removeAttr('disabled');
-            addMessage('Server', null, 'username not accepted:'+ json.data, new Date());
-        // NOTE: if you're not sure about the JSON structure
-        // check the server source code above
-        } else { // it's a single message
-            input.removeAttr('disabled'); // let the user write another message
-            type.removeAttr('disabled'); // let the user write another message
-            addMessage(json.origin, json.name, json.data,
-                       new Date(json.time));
-        }
-    };
- 
+            if(!myName){
+                status.text('Choose name:');
+            }else{
+                connection.send('{"name":"username","data":{"name":"'+myName+'"}}');
+            }
+        };
+     
+        connection.onerror = function (error) {
+            // just in there were some problems with conenction...
+            content.html($('<p>', { text: 'Sorry, but there\'s some problem with your '
+                                        + 'connection or the server is down.</p>' } ));
+        };
+     
+        // most important part - incoming messages
+        connection.onmessage = function (message) {
+            // try to parse JSON message. Because we know that the server always returns
+            // JSON this should work without any problem but we should make sure that
+            // the massage is not chunked or otherwise damaged.
+            try {
+                var json = JSON.parse(message.data);
+                console.log('Received message:');
+                console.log(json);
+            } catch (e) {
+                console.log('This doesn\'t look like a valid JSON: ', message.data);
+                return;
+            }if (json.name == 'subscribed'){
+                if(subscriptions.indexOf(json.data.name)<0){
+                    subscriptions.push(json.data.name);
+                }
+            }else if(json.name == 'unsubscribed'){
+                var ix = subscriptions.indexOf(json.data.name);
+                if(ix>-1){
+                    subscriptions.splice(ix,1);
+                }
+            }if (json.name === 'username::accepted'){
+                myName = json.data.name;
+                status.text('Message:');
+                if(subscriptions.length<1){
+                    if(myName === 'Torvalds'){
+                        subscriptions.push('**');
+                    }else{
+                        subscriptions.push('message');
+                    }
+                }
+                for(var sub in subscriptions){ 
+                    connection.send('{"name":"subscribe", "data":{"name":"'+subscriptions[sub]+'"}}');
+                }
+                input.removeAttr('disabled');
+                type.removeAttr('disabled');
+                addMessage('Server', null, 'connection accepted with username:'+ json.data.name, new Date());
+            }if (json.name === 'username::rejected'){
+                input.removeAttr('disabled');
+                addMessage('Server', null, 'username not accepted:'+ json.data, new Date());
+            // NOTE: if you're not sure about the JSON structure
+            // check the server source code above
+            } else { // it's a single message
+                input.removeAttr('disabled').val(''); // let the user write another message
+                type.removeAttr('disabled'); // let the user write another message
+                addMessage(json.origin, json.name, json.data,
+                           new Date(json.time));
+            }
+        };
+    }
+
+    connectClient(); 
     /**
      * Send mesage when user presses Enter key
      */
@@ -116,6 +140,7 @@ $(function () {
             status.text('Error');
             input.attr('disabled', 'disabled').val('Unable to communicate '
                                                  + 'with the WebSocket server.');
+            connectClient();
         }
     }, 3000);
  

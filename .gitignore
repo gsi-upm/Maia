@@ -4,3 +4,5 @@ python/venv
 *.o
 node_modules
 *.log
+lib-cov
+coverage.html

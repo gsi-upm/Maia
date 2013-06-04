@@ -109,12 +109,8 @@ MaiaServer.prototype.send = function(event, connection){
     if(!event.time){
         event.time = (new Date()).getTime();
     }
-    var name = event.name;
-    if(name instanceof Array){
-        event.name = name.join(this.separator);
-    }
     try{
-        connection.send(JSON.stringify(event));
+        connection.send(this.stringify(event));
     }catch(ex){
         this.logger.error('Couldn\'t send event to '+connection.name, event);
         this.logger.error(ex);
@@ -129,19 +125,15 @@ MaiaServer.prototype.stringify = function(msg) {
     return JSON.stringify(msg, function(key,value){
         if( firstTime && key == 'name'){
             firstTime = false;
-            return value.join(this.separator);
+            if(value instanceof Array){
+                return value.join(this.separator);
+            }else{
+                return value;
+            }
         }else{
             return value;
         }
     });
-}
-
-/**
- * Helper function for escaping input strings.
- */
-MaiaServer.prototype.htmlEntities = function(str) {
-    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;')
-                      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 /**
@@ -475,4 +467,3 @@ MaiaServer.prototype.notifyPlugins = function(){
 }
 
 exports.MaiaServer = MaiaServer;
-exports.MaiaPlugin = require('./maia-plugin').MaiaPlugin;

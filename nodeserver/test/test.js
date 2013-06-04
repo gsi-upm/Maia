@@ -1,8 +1,8 @@
 var assert = require('assert')
-var maia = require('../lib/maia-server');
+var maia = require('../');
 var MaiaServer = maia.MaiaServer;
 var MaiaPlugin = maia.MaiaPlugin;
-var AuthPlugin = require('../lib/auth-plugin').AuthPlugin;
+var AuthPlugin = maia.AuthPlugin;
 var WS = require('ws');
 var assert = require('assert');
 
@@ -65,6 +65,29 @@ describe('Maia-Server', function(){
                         done();
                     }
                 }
+            });
+        });
+        it('Should be able to get subscriptions. Ex. "test::all" "*"', function(done){
+            var ws = new WS('ws://localhost:'+port);
+            var masks = ["test::all","*"];
+            ws.on('message', function(msg){
+                var json = JSON.parse(msg);
+                if(json.name === 'subscriptions'){
+                    console.log('Got:', json.data);
+                    var keys = Object.keys(json.data);
+                    if(keys.length == masks.length){
+                        ws.close();
+                        done();
+                    }else{
+                        done(new Error('Unexpected event: "'+json.data.name+'". Expected: '+masks));
+                    }
+                }
+            });
+            ws.on('open', function() {
+                for(var mask in masks){
+                    ws.send(JSON.stringify({name:"subscribe",data:{name: masks[mask]}}));
+                }
+                ws.send(JSON.stringify({name:"getSubscriptions", data: ""}));
             });
         });
         it('Should be able to receive subscribed events', function(done){

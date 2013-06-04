@@ -73,7 +73,6 @@ describe('Maia-Server', function(){
             ws.on('message', function(msg){
                 var json = JSON.parse(msg);
                 if(json.name === 'subscriptions'){
-                    console.log('Got:', json.data);
                     var keys = Object.keys(json.data);
                     if(keys.length == masks.length){
                         ws.close();

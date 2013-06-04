@@ -1,6 +1,9 @@
 exports.MaiaServer = require('./maia-server').MaiaServer;
 exports.MaiaPlugin = require('./maia-plugin').MaiaPlugin;
 exports.AuthPlugin = require('./auth-plugin').AuthPlugin;
+exports.SaFPlugin = require('./saf-plugin').SaFPlugin;
+exports.GithubPlugin = require('./github-plugin').GithubPlugin;
 exports.MaiaTransport = require('./maia-transport').MaiaTransport;
 exports.WHTransport = require('./webhook-transport').WHTransport;
 exports.WSTransport = require('./ws-transport').WSTransport;
+exports.XMPPTransport = require('./xmpp-transport').XMPPTransport;

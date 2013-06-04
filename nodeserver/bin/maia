@@ -14,16 +14,22 @@
 // Optional. You will see this name in eg. 'ps' or 'top' command
 process.title = 'maia-server';
  
-var MaiaServer = require('../lib/maia-server').MaiaServer;
-var GithubPlugin = require('../lib/github-plugin').GithubPlugin;
-var AuthPlugin = require('../lib/auth-plugin').AuthPlugin;
-var SaFPlugin = require('../lib/saf-plugin').SaFPlugin;
+var maia = require('../index');
+var MaiaServer = maia.MaiaServer;
+var GithubPlugin = maia.GithubPlugin;
+var AuthPlugin = maia.AuthPlugin;
+var SaFPlugin = maia.SaFPlugin;
+var XMPPTransport = maia.XMPPTransport;
+var config = require('../config.json');
 // Port where we'll run the websocket server
 var port = 1337;
-var ghp = new GithubPlugin([]);
-var auth = new AuthPlugin([]);
-var saf = new SaFPlugin(['all']);
-var maiaServer = new MaiaServer(port, true, null, ['all']);
+var loglevel = ['ERROR', 'LOG']
+var ghp = new GithubPlugin(loglevel);
+var auth = new AuthPlugin(loglevel);
+var saf = new SaFPlugin(loglevel);
+var xmpp = new XMPPTransport(config.xmpp.jid, config.xmpp.password, loglevel);
+var maiaServer = new MaiaServer(port, true, null, ['ERROR', 'LOG', 'INFO', 'WARN']);
 maiaServer.addPlugin(ghp);
 maiaServer.addPlugin(auth);
 maiaServer.addPlugin(saf);
+maiaServer.addTransport(xmpp);

@@ -14,6 +14,7 @@ MaiaTransport = function(name, levels){
 }
 MaiaTransport.prototype = Object.create(EventEmitter.prototype);
 MaiaTransport.prototype.setServer = function(server){
+    this.logger.log('Setting server');
     this.server = server;
 }
 exports.MaiaTransport = MaiaTransport

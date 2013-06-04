@@ -131,8 +131,7 @@ describe('Maia-Server', function(){
             for(var t in testcases){
                 server.subscribe(testcases[t], {
                     name: 'Testcase:'+testcases[t],
-                    send: function(msg){
-                        var json = JSON.parse(msg);
+                    send: function(json){
                         if(json.name === 'subscribed'){
                             return;
                         }else{
@@ -153,8 +152,7 @@ describe('Maia-Server', function(){
             for(var t in testcases){
                 server.subscribe(testcases[t], {
                     name: 'Testcase:'+testcases[t],
-                    send: function(msg){
-                        var json = JSON.parse(msg);
+                    send: function(json){
                         if(json.name === 'subscribed'){
                             return;
                         }else{
@@ -175,8 +173,7 @@ describe('Maia-Server', function(){
             for(var t in testcases){
                 server.subscribe(testcases[t], {
                     name: 'Testcase:'+testcases[t],
-                    send: function(msg){
-                        var json = JSON.parse(msg);
+                    send: function(json){
                         if(json.name === 'subscribed'){
                             return;
                         }else{
@@ -196,8 +193,7 @@ describe('Maia-Server', function(){
             var received = [];
             server.subscribe(["*"], {
                 name: 'Testcase: *',
-                send: function(msg){
-                    var json = JSON.parse(msg);
+                send: function(json){
                     if(json.name === 'subscribed'){
                         return;
                     }else{
@@ -218,8 +214,7 @@ describe('Maia-Server', function(){
             var received = [];
             server.subscribe(["foo","*","bar"], {
                 name: 'Testcase: foo::*::bar',
-                send: function(msg){
-                    var json = JSON.parse(msg);
+                send: function(json){
                     if(json.name === 'subscribed'){
                         return;
                     }else{
@@ -240,8 +235,7 @@ describe('Maia-Server', function(){
             var received = [];
             server.subscribe(['**'], {
                 name: '** wildcard:',
-                send: function(msg){
-                    var json = JSON.parse(msg);
+                send: function(json){
                     if(json.name === 'subscribed'){
                         return;
                     }else{
@@ -278,8 +272,7 @@ describe('Auth-Plugin', function(){
             var ws = new WS('ws://localhost:'+port);
             var success = {
                 name: 'Testing with mocha',
-                send: function(msg){
-                    var json = JSON.parse(msg);
+                send: function(json){
                     if(json.forSubscription == 'test'){
                         server.unsubscribeAll(success);
                         ws.close();

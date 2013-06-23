@@ -104,7 +104,7 @@ The type of the message if given by the value of the element
 *"name"*. In the example below, <type> is the type of the 
 message.
 
-    ```{"name":"&lt;type&gt;", "time":"1370210358496", "data":{...}}```
+    {"name":"&lt;type&gt;", "time":"1370210358496", "data":{...}}
  
 *onMessage(String)* method should not be overridden.
 To override it will cause *message dispatching* method to stop working.

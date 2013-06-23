@@ -76,8 +76,8 @@ process is completed.
 
 ### Reconnection handling
 
-*MaiaClientAdaptator* implements reconnection  
-to assure the client will remain connected until a *Client-initiated 
+*MaiaClientAdaptator* implements reconnection to assure the client will 
+remain connected until a *Client-initiated 
 closure process* is performed. Current description of *maia protocol* 
 states client will remain connected permanently, server will never 
 send a disconnect request. Therefore, this class will try to reconnect

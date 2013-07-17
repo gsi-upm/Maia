@@ -27,47 +27,60 @@ $(function () {
 
     function connectClient(){ 
         // open connection
-        connection = new WebSocket('ws://'+location.host);
+        connection = new MaiaClient('ws://'+location.host);
      
-        connection.onopen = function () {
+        connection.on('open', function () {
             // first we want users to enter their names
             input.removeAttr('disabled');
-            if(!myName){
+            if(!myName || myName === "" || myName == " "){
+                console.log('Choose a name');
                 status.text('Choose name:');
             }else{
-                connection.send('{"name":"username","data":{"name":"'+myName+'"}}');
+                console.log('You have a name');
+                connection.username(myName, function(msg){
+                    myName = msg.data.name;
+                    status.text('Message:');
+                    if(subscriptions.length<1){
+                        if(myName === 'Torvalds'){
+                            subscriptions.push('**');
+                        }else{
+                            subscriptions.push('message');
+                        }
+                    }
+                 
+                }, function(){
+                    myName = ""; 
+                    connectClient();
+                });
             }
-        };
+        });
+
+        connection.on('message', function(msg){
+            console.log('MESSAGE: ', msg)
+            addMessage(msg.origin, msg.name, msg.data, new Date());
+        });
      
-        connection.onerror = function (error) {
+        connection.on('error', function (error) {
             // just in there were some problems with conenction...
             content.html($('<p>', { text: 'Sorry, but there\'s some problem with your '
                                         + 'connection or the server is down.</p>' } ));
-        };
+        });
      
-        // most important part - incoming messages
-        connection.onmessage = function (message) {
-            // try to parse JSON message. Because we know that the server always returns
-            // JSON this should work without any problem but we should make sure that
-            // the massage is not chunked or otherwise damaged.
-            try {
-                var json = JSON.parse(message.data);
-                console.log('Received message:');
-                console.log(json);
-            } catch (e) {
-                console.log('This doesn\'t look like a valid JSON: ', message.data);
-                return;
-            }if (json.name == 'subscribed'){
-                if(subscriptions.indexOf(json.data.name)<0){
-                    subscriptions.push(json.data.name);
-                }
-            }else if(json.name == 'unsubscribed'){
-                var ix = subscriptions.indexOf(json.data.name);
-                if(ix>-1){
-                    subscriptions.splice(ix,1);
-                }
-            }if (json.name === 'username::accepted'){
-                myName = json.data.name;
+        connection.on('subscribed', function(msg){
+            if(subscriptions.indexOf(msg.data.name)<0){
+                subscriptions.push(msg.data.name);
+            }
+            addMessage('Server', msg.name, 'Subscribed to:'+ msg.data.name, new Date());
+        });
+        connection.on('unsubscribed', function(msg){
+            var ix = subscriptions.indexOf(msg.data.name);
+            if(ix>-1){
+                subscriptions.splice(ix,1);
+            }
+            addMessage('Server', msg.name, 'Unsubscribed from:'+ msg.data.name, new Date());
+        });
+        connection.on('username::accepted', function(msg){
+                myName = msg.data.name;
                 status.text('Message:');
                 if(subscriptions.length<1){
                     if(myName === 'Torvalds'){
@@ -77,23 +90,25 @@ $(function () {
                     }
                 }
                 for(var sub in subscriptions){ 
-                    connection.send('{"name":"subscribe", "data":{"name":"'+subscriptions[sub]+'"}}');
+                    connection.subscribe(subscriptions[sub]);
                 }
                 input.removeAttr('disabled');
                 type.removeAttr('disabled');
-                addMessage('Server', null, 'connection accepted with username:'+ json.data.name, new Date());
-            }if (json.name === 'username::rejected'){
+                addMessage('Server', null, 'connection accepted with username:'+ msg.data.name, new Date());
+        });
+        connection.on('username::rejected', function(msg){
                 input.removeAttr('disabled');
-                addMessage('Server', null, 'username not accepted:'+ json.data, new Date());
+                addMessage('Server', null, 'username not accepted:'+ msg.data.name, new Date());
+        });
             // NOTE: if you're not sure about the JSON structure
             // check the server source code above
-            } else { // it's a single message
-                input.removeAttr('disabled').val(''); // let the user write another message
-                type.removeAttr('disabled'); // let the user write another message
-                addMessage(json.origin, json.name, json.data,
-                           new Date(json.time));
-            }
-        };
+            //} else { // it's a single message
+                //input.removeAttr('disabled');// let the user write another message
+                //type.removeAttr('disabled'); // let the user write another message
+                //addMessage(json.origin, json.name, json.data,
+                           //new Date(json.time));
+            //}
+        //};
     }
 
     connectClient(); 
@@ -119,30 +134,16 @@ $(function () {
                 msg.data = {name: txt};
             }
             // send the message as an ordinary text
-            connection.send(JSON.stringify(msg));
+            connection.sendRaw(msg);
             console.log('Message sent: '+msg);
             $(this).val('');
             // disable the input field to make the user wait until server
             // sends back response
-//             input.attr('disabled', 'disabled');
+             //input.attr('disabled', 'disabled');
  
             // we know that the first message sent from a user their name
         }
     });
- 
-    /**
-     * This method is optional. If the server wasn't able to respond to the
-     * in 3 seconds then show some error message to notify the user that
-     * something is wrong.
-     */
-    setInterval(function() {
-        if (connection.readyState !== 1) {
-            status.text('Error');
-            input.attr('disabled', 'disabled').val('Unable to communicate '
-                                                 + 'with the WebSocket server.');
-            connectClient();
-        }
-    }, 3000);
  
     /**
      * Add message to the chat window

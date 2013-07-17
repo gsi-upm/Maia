@@ -74,7 +74,7 @@ function MaiaServer(webSocketsServerPort, servestatic, app, levels){
             self.notifyPlugins('close', connection);
             self.logger.info((new Date()) + ' Peer '
                 + connection.remoteAddress + ' (' + connection.name + ')' + ' disconnected.');
-            self.unsubscribeAll(connection);
+            self.unsubscribeAll(connection, null, true);
             self.logger.debug('Removed subscriptions. Now: ', self.subscriptions);
     });
 }
@@ -111,9 +111,15 @@ MaiaServer.prototype.send = function(event, connection){
     try{
         this.logger.debug('Event:', event);
         connection.send(event);
-    }catch(ex){
+    }catch(err){
         this.logger.error('Couldn\'t send event to '+connection.name, event);
-        this.logger.error(ex);
+        this.logger.error(err);
+        if(err.message === 'not opened'){
+            this.logger.debug('Unsubscribing');
+            this.unsubscribeAll(connection, null, true);
+        }else{
+            this.logger.debug('Error:'+err);
+        }
     }
 }
 
@@ -150,7 +156,7 @@ MaiaServer.prototype.loads = function(msg) {
  * Get all the subscriptions for a certain connection.
  *
  */ 
-MaiaServer.prototype.getSubscriptions= function(connection){
+MaiaServer.prototype.getSubscriptions = function(connection){
     if(this.subscribers[connection]){
         return this.subscribers[connection];
     }else{
@@ -190,10 +196,13 @@ MaiaServer.prototype._getSubscriptions= function(connection){
  * Remove all the subscriptions for a certain connection.
  *
  */ 
-MaiaServer.prototype.unsubscribeAll = function(connection, message){
+MaiaServer.prototype.unsubscribeAll = function(connection, message, silent){
+    if( typeof silent === 'undefined' ){
+        silent = false;
+    }
     var subs = this.getSubscriptions(connection);
     for(var sub in subs){
-        this.unsubscribe(sub.split(this.separator), connection, message);
+        this.unsubscribe(sub.split(this.separator), connection, message, silent);
     }
 }
 
@@ -201,7 +210,10 @@ MaiaServer.prototype.unsubscribeAll = function(connection, message){
  * Delete a specific subscription for a connection (user).
  *
  */
-MaiaServer.prototype.unsubscribe = function(path, connection, message){
+MaiaServer.prototype.unsubscribe = function(path, connection, message, silent){
+    if( typeof silent === 'undefined' ){
+        silent = false;
+    }
     var res = [[path, connection, message]];
     for(plugin in this.plugins){
         this.logger.debug('Unsubscribing from '+path+'. Processing for plugin:', this.plugins[plugin].name);
@@ -241,9 +253,13 @@ MaiaServer.prototype.unsubscribe = function(path, connection, message){
                     delete this.subscribers[connection];
                 }
             }
-            this.send({name: "unsubscribed", data: {"name": key}}, connection);
+            if(!silent){
+                this.send({name: "unsubscribed", data: {"name": key}}, connection);
+            }
         }
     }
+    this.logger.debug('Subscriptions: ', this.subscriptions);
+    this.logger.debug('Subscribers: ', this.subscribers);
 }
 
 /**
@@ -417,7 +433,7 @@ MaiaServer.prototype.subscribe = function(path, connection, message){
  * Notify all the subscribers of a specific subscription
  *
  */
-MaiaServer.prototype.pokeSubscribers = function(tokens ,event){
+MaiaServer.prototype.pokeSubscribers = function(tokens, event){
     var subs = this.getSubscribers(tokens);
     event['forSubscription'] = tokens.join(this.separator);
     for(var subscriber in subs){

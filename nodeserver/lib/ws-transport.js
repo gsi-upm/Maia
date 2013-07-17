@@ -61,7 +61,11 @@ WSTransport.prototype.setServer= function(server){
         }
         connection.on('message', function(message, flags) {
             self.logger.debug('New message:',message);
-            self.server.emit('message', self.server.loads(message), connection);
+            try{
+                self.server.emit('message', self.server.loads(message), connection);
+            }catch(err){
+                self.logger.error(err);
+            }
         });
         // user disconnected
         connection.on('close', function() {

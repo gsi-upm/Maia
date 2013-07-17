@@ -7,7 +7,7 @@
     "websockets",
     "maia"
   ],
-  "version": "0.5.0",
+  "version": "0.6.0",
   "bugs": {
     "url": "http://github.com/gsi-upm/Maia/issues"
   },

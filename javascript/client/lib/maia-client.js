@@ -247,7 +247,7 @@
     }
 
     Client.prototype.username = function(name, cb, err){
-        this.send("username", { data: name});
+        this.send("username", { name: name});
         var ffail = function(){
             err();
         }

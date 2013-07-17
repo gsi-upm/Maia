@@ -7,7 +7,7 @@
     "websockets",
     "maia"
   ],
-  "version": "0.4.1",
+  "version": "0.5.0",
   "bugs": {
     "url": "http://github.com/gsi-upm/Maia/issues"
   },
@@ -18,7 +18,7 @@
   "bin": {
     "maia-client": "./bin/maia-client"
   },
-  "main": "./lib/maia-client",
+  "main": "./lib/maia-client.js",
   "engines": {
     "node": ">= v0.8.x"
   },

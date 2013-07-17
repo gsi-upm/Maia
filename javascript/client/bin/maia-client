@@ -1,17 +1,19 @@
 #!/usr/bin/env node
 
-var Client = require('../lib/maia-client').Client;
+var Client = require('../lib/maia-client').MaiaClient;
 
 var client = new Client('ws://127.0.0.1:1337',{
   name: "default-client"
 });
 
 client.socket.on('open', function(){
-    client.subscribe('**', function(json){
+    client.bind('username::accepted', function(json){
         client.logger.debug('Received:', json);
+        client.send('test', 'myself');
     });
 
     var fn = function(event){
+        client.send('hola', 'a todos');
         client.logger.debug('Bogus function', event);
     }
     client.subscribe('test', fn);

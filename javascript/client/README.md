@@ -1,5 +1,5 @@
 ![GSI Logo](http://gsi.dit.upm.es/templates/jgsi/images/logo.png)
-[Maia Node.js Client](http://gsi.dit.upm.es) 
+[Maia Javascript Client (Node.js+Browser)](http://gsi.dit.upm.es) 
 ==================================
 
 Introduction

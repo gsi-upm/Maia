@@ -6,15 +6,16 @@
 var Logger = require('simple-colourful-logger').Logger;
 var EventEmitter = require('events').EventEmitter;
 MaiaPlugin = function(name, levels){
+    var self = this;
     EventEmitter.call(this);
     this.name = name
     this.logger = new Logger(this.name, levels);
     this.on('connection',function(){
-        this.logger.debug('New connection');
+        self.logger.debug('New connection');
     });
     
     this.on('close',function(){
-        this.logger.debug('Closed connection');
+        self.logger.debug('Closed connection');
     });
 }
 MaiaPlugin.prototype = Object.create(EventEmitter.prototype);

@@ -71,11 +71,11 @@ function MaiaServer(webSocketsServerPort, servestatic, app, levels){
         }
     });
     self.on('close', function(connection){
-            self.notifyPlugins('close', connection);
-            self.logger.info((new Date()) + ' Peer '
-                + connection.remoteAddress + ' (' + connection.name + ')' + ' disconnected.');
+        self.logger.info((new Date()) + ' Peer '
+            + connection.remoteAddress + ' (' + connection.name + ')' + ' disconnected.');
             self.unsubscribeAll(connection, null, true);
             self.logger.debug('Removed subscriptions. Now: ', self.subscriptions);
+        self.notifyPlugins('close', connection);
     });
 }
 
@@ -484,8 +484,8 @@ MaiaServer.prototype.removeTransport = function(t){
 
 MaiaServer.prototype.notifyPlugins = function(){
     for(var plugin in this.plugins){
-        this.logger.debug('Notifying plugin:', this.plugins[plugin].name, arguments[0]);
-        this.plugins[plugin].emit.apply(this.plugins[plugin],arguments);
+        this.logger.debug('Notifying plugin:', this.plugins[plugin].name, ': ', arguments[0]);
+        this.plugins[plugin].emit.apply(this.plugins[plugin], arguments);
     }
 }
 

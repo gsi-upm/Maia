@@ -1,16 +1,17 @@
 var MaiaPlugin = require('./maia-plugin').MaiaPlugin;
 
 var AuthPlugin = function(){
+    var self = this;
     var mainArguments = Array.prototype.slice.call(arguments);
     [].unshift.call(arguments,'AuthPlugin');
     MaiaPlugin.apply(this,arguments);
     this.taken = [];
     this.whitelist = ['Torvalds'];
     this.on('close', function(connection){
-        var i = this.taken.indexOf(connection.name);
+        var i = self.taken.indexOf(connection.name);
         if(i>=0){
-            this.logger.debug('User disconnected!');
-            this.taken.splice(i,1);
+            self.logger.debug('Freeing the username: ', connection.name);
+            self.taken.splice(i, 1);
         }
     });
 }
@@ -22,7 +23,7 @@ AuthPlugin.prototype.processOne = function(msg, connection){
     if(path[0] === 'username'){
         this.logger.debug('Processing '+path[0]+' ->' + typeof path[0]);
         var name = msg.data.name;
-        if(this.taken.indexOf(name)<0){
+        if(this.taken.indexOf(name)<0 || connection.name == name){
             connection.name = name;
             this.taken.push(name);
             this.logger.debug('Accepted: ' + name);

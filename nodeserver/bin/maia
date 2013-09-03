@@ -23,7 +23,7 @@ var SaFPlugin = maia.SaFPlugin;
 var config = require('../config.json');
 // Port where we'll run the websocket server
 var port = 1337;
-var loglevel = ['ERROR', 'LOG']
+var loglevel = ['all']
 var ghp = new GithubPlugin(loglevel);
 var auth = new AuthPlugin(loglevel);
 var saf = new SaFPlugin(loglevel);

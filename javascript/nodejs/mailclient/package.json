@@ -2,23 +2,36 @@
   "author": "J.Fernando Sánchez <balkian@gmail.com>",
   "name": "maia-mailer",
   "description": "Websocket hook for mail integration",
-  "keywords" : [ "hook", "websockets", "maia", "mailer" ],
-  "version": "0.0.1",
-  "bugs" : { "url" : "http://github.com/gsi-upm/Maia/issues" },
+  "keywords": [
+    "hook",
+    "websockets",
+    "maia",
+    "mailer"
+  ],
+  "version": "0.0.2",
+  "bugs": {
+    "url": "http://github.com/gsi-upm/Maia/issues"
+  },
   "repository": {
     "type": "git",
     "url": "git://github.com/gsi-upm/Maia.git"
   },
   "bin": {
-     "maia-mailer": "./bin/mailer"
-   },
+    "maia-mailer": "./bin/mailer"
+  },
   "main": "./lib/mailer",
   "engines": {
     "node": ">= v0.8.x"
   },
   "dependencies": {
     "maia-client": "*",
-    "mailer" : "*"
+    "mailer": "*"
   },
-  "devDependencies": {}
+  "devDependencies": {},
+  "licenses": [
+    {
+      "type": "Apache-2.0",
+      "url": "http://www.apache.org/licenses/LICENSE-2.0"
+    }
+  ]
 }

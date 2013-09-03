@@ -7,7 +7,7 @@
     "websockets",
     "maia"
   ],
-  "version": "0.6.3",
+  "version": "0.6.4",
   "bugs": {
     "url": "http://github.com/gsi-upm/Maia/issues"
   },
@@ -26,5 +26,11 @@
     "simple-colourful-logger": "*",
     "ws": ">=0.4"
   },
-  "devDependencies": {}
+  "devDependencies": {},
+  "licenses": [
+    {
+      "type": "Apache-2.0",
+      "url": "http://www.apache.org/licenses/LICENSE-2.0"
+    }
+  ]
 }

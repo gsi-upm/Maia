@@ -1,8 +1,21 @@
 #!/usr/bin/env node
 
-var Client = require('../lib/maia-client').MaiaClient;
+var Client = require('../lib/maia-client').MaiaClient,
+    defurl = 'ws://127.0.0.1:1337';
 
-var client = new Client('ws://127.0.0.1:1337',{
+var url = process.argv[2]
+if( !url || url === '' ){
+    url = defurl;    
+}
+else {
+    if( url.indexOf(':') == -1 ){
+        url = url+':1337';
+        if( url.substring(5) !== 'ws://' ){
+            url = 'ws://'+url;
+        }
+    }
+}
+var client = new Client( url,{
   name: "default-client"
 });
 

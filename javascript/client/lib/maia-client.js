@@ -192,11 +192,10 @@
         var self = this;
         try{
             self.logger.debug('Message received: ', msg);
-            if(msg.forSubscription){
+            if(msg.forSubscription && msg.forSubscription !== msg.name ){
                 self.emit('message::'+msg.forSubscription, msg);
-            }else if('message::'+msg.forSubscription !== msg.name){
-                self.emit(msg.name, msg);
             }
+            self.emit('message::'+msg.name, msg);
             self.emit('message', msg);
         }catch(e){
             self.logger.error('oups', e.message);
@@ -247,20 +246,27 @@
     }
 
     Client.prototype.username = function(name, cb, err){
-        this.send("username", { name: name});
-        var ffail = function(){
-            err();
-        }
-        if(cb){
-            var fok = function(){
-                this.unbind("username::acepted")
-                this.unbind("username::rejected")
+        var ffail, fok;
+        fail = function(){
+            if(err){
+                err();
             }
-            this.bind("username::acepted", fok);
+            this.logger.debug('There was an error with the login with username:', name);
+            this.unbind("message::username::accepted", fok)
+            this.unbind("message::username::rejected", ffail)
         }
-        if(ffail){
-            this.bind("username::rejected", ffail);
+        fok = function(){
+            if(cb){
+                cb.apply(this, arguments);
+            }
+            this.loggedAs = arguments[0].data.name;
+            this.logger.debug('Now logged as: ', this.loggedAs);
+            this.unbind("message::username::accepted", fok)
+            this.unbind("message::username::rejected", ffail)
         }
+        this.bind("message::username::accepted", fok);
+        this.bind("message::username::rejected", ffail);
+        this.send("username", { name: name});
     }
 
     Client.prototype.subscribe = function(event, fn){

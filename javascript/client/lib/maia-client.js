@@ -43,9 +43,9 @@
         },
         trigger : function(event /* , args... */){
             this._events = this._events || {};
-            console.log('Triggered: ', arguments);
+            //console.debug('Triggered: ', arguments);
             if( event in this._events === false  )  return;
-            console.log('Listeners: ', this._events[event]);
+            //console.log('Listeners: ', this._events[event]);
             for(var i = 0; i < this._events[event].length; i++){
                 this._events[event][i].apply(this, Array.prototype.slice.call(arguments, 1));
             }
@@ -121,7 +121,7 @@
             ////console.log('Prototype:',WSWrapper.prototype);
         //}
         WSWrapper.prototype['send'] = function(){
-            console.log('Send:', arguments);
+            //console.log('Send:', arguments);
             this.socket['send'].apply(this.socket, arguments);
         };
         var Logger = function(){

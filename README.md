@@ -1,5 +1,6 @@
 ![GSI Logo](http://gsi.dit.upm.es/templates/jgsi/images/logo.png)
 [Maia](http://gsi.dit.upm.es) 
+[![Build Status](https://travis-ci.org/gsi-upm/Maia.svg?branch=master)](https://travis-ci.org/gsi-upm/Maia)
 ==================================
 
 Introduction

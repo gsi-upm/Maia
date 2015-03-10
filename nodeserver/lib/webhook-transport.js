@@ -6,6 +6,7 @@
 // http://github.com/gsi-upm
 
 var express = require('express');
+var bodyParser = require('body-parser');
 var http = require('http');
 var path = require('path');
 var MaiaTransport = require('./maia-transport').MaiaTransport;
@@ -23,8 +24,8 @@ function WHTransport(port, servestatic, app, levels){
     if(servestatic){
         self.staticpath = path.resolve(__dirname, '../public');
         self.app.use(express.static(self.staticpath));
-    }
-    self.app.use(express.bodyParser());
+    }    
+    self.app.use(bodyParser());
 }
 
 WHTransport.prototype = Object.create(MaiaTransport.prototype);

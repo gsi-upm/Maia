@@ -6,4 +6,4 @@ exports.GithubPlugin = require('./github-plugin').GithubPlugin;
 exports.MaiaTransport = require('./maia-transport').MaiaTransport;
 exports.WHTransport = require('./webhook-transport').WHTransport;
 exports.WSTransport = require('./ws-transport').WSTransport;
-exports.XMPPTransport = require('./xmpp-transport').XMPPTransport;
+//exports.XMPPTransport = require('./xmpp-transport').XMPPTransport;
